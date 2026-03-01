@@ -17,7 +17,7 @@ export namespace SystemPrompt {
   }
 
   export function provider(model: Provider.Model) {
-    if (model.api.id.includes("gpt-5") || model.api.id.includes("gpt-oss-32k") || model.api.id.includes("qwen3.5")) return [PROMPT_CODEX]
+    if (model.api.id.includes("gpt-5") || model.api.id.includes("gpt-oss-32k") || model.api.id.includes("codex")) return [PROMPT_CODEX]
     if (model.api.id.includes("gpt-") || model.api.id.includes("o1") || model.api.id.includes("o3"))
       return [PROMPT_BEAST]
     if (model.api.id.includes("gemini-")) return [PROMPT_GEMINI]

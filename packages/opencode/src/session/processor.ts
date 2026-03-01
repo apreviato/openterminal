@@ -247,12 +247,29 @@ export namespace SessionProcessor {
                     usage: value.usage,
                     metadata: value.providerMetadata,
                   })
-                  input.assistantMessage.finish = value.finishReason
+                  // Some providers (e.g. openai-compatible / codex) may return finishReason
+                  // as an object instead of a string — extract and normalize to preserve semantics.
+                  const finishReason = (() => {
+                    const raw = value.finishReason
+                    if (typeof raw === "string") return raw
+                    if (raw == null) return "stop"
+                    const obj = raw as Record<string, unknown>
+                    // Try common object shapes: { type }, { reason }, { finish_reason }
+                    const candidate = obj.type ?? obj.reason ?? obj.finish_reason
+                    if (typeof candidate === "string") {
+                      // Normalize OpenAI underscore format → AI SDK hyphen format
+                      return candidate.replace(/_/g, "-")
+                    }
+                    // If JSON representation contains "tool", preserve tool-calls semantics
+                    if (JSON.stringify(raw).toLowerCase().includes("tool")) return "tool-calls"
+                    return "unknown"
+                  })()
+                  input.assistantMessage.finish = finishReason
                   input.assistantMessage.cost += usage.cost
                   input.assistantMessage.tokens = usage.tokens
                   await Session.updatePart({
                     id: Identifier.ascending("part"),
-                    reason: value.finishReason,
+                    reason: finishReason,
                     snapshot: await Snapshot.track(),
                     messageID: input.assistantMessage.id,
                     sessionID: input.assistantMessage.sessionID,
