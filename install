@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP=openterminal
+MUTED='\033[0;2m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+ORANGE='\033[38;5;214m'
+NC='\033[0m'
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+OPENTERMINAL_ROOT="$SCRIPT_DIR/packages/opencode"
+INSTALL_DIR="$HOME/.openterminal/bin"
+
+usage() {
+    cat <<EOF
+OpenTerminal — local dev installer
+
+Usage: ./install [options]
+
+Options:
+    -h, --help           Show this help
+    --no-modify-path     Skip adding to shell config
+
+Installs a wrapper that launches OpenTerminal via bun from:
+  $OPENTERMINAL_ROOT
+
+EOF
+}
+
+no_modify_path=false
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help) usage; exit 0 ;;
+        --no-modify-path) no_modify_path=true; shift ;;
+        *) echo -e "${ORANGE}Warning: unknown option '$1'${NC}" >&2; shift ;;
+    esac
+done
+
+# ── pre-checks ────────────────────────────────────────────────────────────────
+if ! command -v bun >/dev/null 2>&1; then
+    echo -e "${RED}Error: bun is not installed or not in PATH${NC}"
+    echo "Install bun: curl -fsSL https://bun.sh/install | bash"
+    exit 1
+fi
+
+if [ ! -f "$OPENTERMINAL_ROOT/src/index.ts" ]; then
+    echo -e "${RED}Error: source not found at $OPENTERMINAL_ROOT/src/index.ts${NC}"
+    echo "Run this script from the openterminal repository root."
+    exit 1
+fi
+
+# ── install bun dependencies ───────────────────────────────────────────────────
+echo -e "${MUTED}Installing dependencies...${NC}"
+(cd "$SCRIPT_DIR" && bun install --silent 2>/dev/null) || true
+
+# ── create wrapper with baked-in path ─────────────────────────────────────────
+mkdir -p "$INSTALL_DIR"
+WRAPPER="$INSTALL_DIR/$APP"
+
+# Write a wrapper script with the source path baked in at install time.
+# This avoids symlink issues on Windows and is unambiguous.
+cat > "$WRAPPER" <<WRAPPER_CONTENT
+#!/usr/bin/env bash
+exec bun run --cwd "$OPENTERMINAL_ROOT" --conditions=browser ./src/index.ts "\$@"
+WRAPPER_CONTENT
+chmod +x "$WRAPPER"
+
+# ── PATH management ───────────────────────────────────────────────────────────
+add_to_path() {
+    local config_file="$1"
+    local command="$2"
+    if grep -Fxq "$command" "$config_file" 2>/dev/null; then
+        return 0
+    fi
+    if [[ -w "$config_file" ]]; then
+        printf '\n# openterminal\n%s\n' "$command" >> "$config_file"
+        echo -e "${MUTED}Added $APP to \$PATH in ${NC}$config_file"
+    fi
+}
+
+if [[ "$no_modify_path" != "true" ]] && [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
+    XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+    current_shell="$(basename "${SHELL:-bash}")"
+    case "$current_shell" in
+        fish)   config_files="$HOME/.config/fish/config.fish" ;;
+        zsh)    config_files="${ZDOTDIR:-$HOME}/.zshrc ${ZDOTDIR:-$HOME}/.zshenv" ;;
+        bash|*) config_files="$HOME/.bashrc $HOME/.bash_profile $HOME/.profile" ;;
+    esac
+
+    config_file=""
+    for f in $config_files; do
+        if [[ -f "$f" ]]; then config_file="$f"; break; fi
+    done
+
+    if [[ -n "$config_file" ]]; then
+        case "$current_shell" in
+            fish) add_to_path "$config_file" "fish_add_path $INSTALL_DIR" ;;
+            *)    add_to_path "$config_file" "export PATH=$INSTALL_DIR:\$PATH" ;;
+        esac
+        echo -e "${MUTED}Reload your shell or run: ${NC}source $config_file"
+    else
+        echo -e "${MUTED}Add to your shell config manually:${NC}"
+        echo "  export PATH=$INSTALL_DIR:\$PATH"
+    fi
+fi
+
+# ── success ───────────────────────────────────────────────────────────────────
+echo ""
+echo -e "${MUTED}█▀▀█ █▀▀█ █▀▀█ █▀▀▄  ${NC}▀▀▀▀ █▀▀▀ █▀▀█ █▄▀█"
+echo -e "${MUTED}█  █ █  █ █▀▀▀ █  █  ${NC}_██_ █^^^ █▀▀_ █__█"
+echo -e "${MUTED}▀▀▀▀ █▀▀▀ ▀▀▀▀ ▀  ▀  ${NC}_▀▀_ ▀▀▀▀ ▀__▀ ▀__▀"
+echo ""
+echo -e "${GREEN}✓${NC}  $WRAPPER"
+echo -e "   → $OPENTERMINAL_ROOT/src/index.ts"
+echo ""
+echo -e "   cd <your-project>"
+echo -e "   $APP"
+echo ""

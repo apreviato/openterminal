@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.bun/
+
+# Build output
+dist/
+out/
+build/
+.output/
+
+# Bun
+bun.lockb
+
+# TypeScript
+*.tsbuildinfo
+
+# Drizzle migrations (generated, not hand-written)
+packages/opencode/migration/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.claude/
+
+# SST / Pulumi
+.sst/
+.pulumi/
+
+# Test output
+coverage/
+.nyc_output/
+
+# Installed wrappers (created by install / install.ps1)
+~/.openterminal/
