@@ -683,7 +683,7 @@ export namespace Provider {
     const provider = await state().then((state) => state.providers[providerID])
     if (provider) {
       // Priority list for small/fast models (local Ollama models)
-      const priority = ["qwen2.5:3b", "llama3.2:3b", "phi3:mini", "gemma2:2b", "mistral:7b"]
+      const priority = ["gpt-oss-32k:latest", "qwen2.5:3b", "llama3.2:3b", "phi3:mini", "gemma2:2b", "mistral:7b"]
       for (const item of priority) {
         for (const model of Object.keys(provider.models)) {
           if (model.includes(item)) return getModel(providerID, model)

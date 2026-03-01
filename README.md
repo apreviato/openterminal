@@ -163,6 +163,129 @@ Reference: [opencode.ai/docs/mcp](https://opencode.ai/docs/mcp)
 
 ---
 
+## Cronjobs
+
+openterminal includes a built-in scheduler that lets you run AI agent tasks on a recurring schedule — without any external tooling beyond the OS scheduler (crontab on Linux/macOS, Task Scheduler on Windows).
+
+### TUI — `/cronjobs`
+
+Type `/cronjobs` in the command palette to open the management screen:
+
+```
+Cronjobs   scheduled AI tasks
+
+  name                    schedule            agent            status
+● daily-standup           0 9 * * 1-5         build            active
+○ weekly-report           0 9 * * 1           (default)        inactive
+
+c create   t toggle   d delete   ↑↓ navigate   esc back
+```
+
+**Keybinds:**
+
+| Key | Action |
+|-----|--------|
+| `c` | Create a new cronjob (guided wizard) |
+| `t` | Toggle active/inactive for selected job |
+| `d` | Delete selected job |
+| `↑` / `↓` | Navigate the list |
+| `Esc` | Return to home |
+
+The creation wizard walks you through: **name → schedule → agent → prompt**.
+
+### CLI
+
+```bash
+# Interactive wizard (same steps as TUI)
+openterminal cronjob create
+
+# Non-interactive (scriptable)
+openterminal cronjob create \
+  --name daily-standup \
+  --cron "0 9 * * 1-5" \
+  --agent build \
+  --prompt "Check git log for today's commits and write a standup summary."
+
+# List all jobs
+openterminal cronjob list
+
+# Enable / disable
+openterminal cronjob enable  daily-standup
+openterminal cronjob disable daily-standup
+
+# Delete
+openterminal cronjob delete daily-standup
+
+# Run manually (also called by the OS scheduler)
+openterminal cronjob run daily-standup
+```
+
+### Job file format
+
+Each cronjob is stored as a plain text file in `~/.config/openterminal/cronjob/<name>.md`:
+
+```
+daily-standup
+0 9 * * 1-5
+active
+build
+Check git log for today's commits and write a standup summary.
+```
+
+Lines: `name`, `cron expression`, `active|inactive`, `agent` (empty = default), then the prompt.
+
+### Execution logs
+
+Every run writes a structured entry to `~/.config/openterminal/cronjob/logs.txt`:
+
+```
+────────────────────────────────────────────────────────────
+[2024-01-15 09:00:01]  START  daily-standup
+  cron    : 0 9 * * 1-5
+  agent   : build
+  session : sess_abc123
+  prompt  : Check git log for today's commits and write a standup.
+
+  [tool:bash]  (1.2s)  {"command":"git log --oneline --since=yesterday"}
+    → abc1234 feat: add new feature
+      def5678 fix: resolve auth bug
+  [text]  Here's today's standup summary:
+          - Added new feature (abc1234)
+          - Fixed auth bug (def5678)
+
+[2024-01-15 09:00:05]  DONE  daily-standup  (4.2s)
+────────────────────────────────────────────────────────────
+```
+
+The log path is printed after each run. Errors are flagged inline and also appear in the footer:
+```
+[2024-01-15 09:00:02]  ERROR  model not found
+[2024-01-15 09:00:02]  FAIL   daily-standup  (0.8s)
+```
+
+### OS scheduling
+
+When a job is created or enabled, openterminal registers it with the OS scheduler automatically:
+
+- **Linux / macOS** — adds an entry to the user's crontab
+- **Windows** — creates a Task Scheduler task via `schtasks`
+
+When disabled or deleted, the OS entry is removed. The binary called by the scheduler is `~/.openterminal/bin/openterminal` (or override with `OPENTERMINAL_BIN`).
+
+**Supported cron patterns on Windows** (Task Scheduler has a limited expression set):
+
+| Pattern | Meaning |
+|---------|---------|
+| `* * * * *` | Every minute |
+| `*/N * * * *` | Every N minutes |
+| `M H * * *` | Daily at HH:MM |
+| `M H * * D` | Weekly on day D at HH:MM |
+| `M H D * *` | Monthly on day D at HH:MM |
+
+Complex expressions (ranges, lists, step values beyond `*/N`) are not supported on Windows — use a simpler preset or configure `schtasks` manually.
+
+---
+
 ## Differences from upstream opencode
 
 | Aspect | opencode | openterminal |
@@ -177,6 +300,7 @@ Reference: [opencode.ai/docs/mcp](https://opencode.ai/docs/mcp)
 | Project config dir | `.opencode/` | `.openterminal/` |
 | Database | `opencode.db` | `openterminal.db` |
 | Internal RPC hostname | `opencode.internal` | `openterminal.internal` |
+| Cronjobs | Not available | Built-in (`/cronjobs`, `openterminal cronjob`) |
 
 Everything else — TUI, LSP, MCP, agents, skills, permissions, worktrees, session history — works identically to opencode.
 

@@ -24,6 +24,7 @@ import { KeybindProvider } from "@tui/context/keybind"
 import { ThemeProvider, useTheme } from "@tui/context/theme"
 import { Home } from "@tui/routes/home"
 import { Session } from "@tui/routes/session"
+import { Cronjobs } from "@tui/routes/cronjobs"
 import { PromptHistoryProvider } from "./component/prompt/history"
 import { FrecencyProvider } from "./component/prompt/frecency"
 import { PromptStashProvider } from "./component/prompt/stash"
@@ -560,8 +561,21 @@ function App() {
       title: "Open docs",
       value: "docs.open",
       onSelect: () => {
-        open("https://github.com/anomalyco/openterminal").catch(() => {})
+        open("https://github.com/apreviato/openterminal").catch(() => {})
         dialog.clear()
+      },
+      category: "System",
+    },
+    {
+      title: "Manage cronjobs",
+      value: "cronjobs.open",
+      slash: {
+        name: "cronjobs",
+        aliases: ["cron"],
+      },
+      onSelect: () => {
+        dialog.clear()
+        route.navigate({ type: "cronjobs" })
       },
       category: "System",
     },
@@ -747,6 +761,9 @@ function App() {
         </Match>
         <Match when={route.data.type === "session"}>
           <Session />
+        </Match>
+        <Match when={route.data.type === "cronjobs"}>
+          <Cronjobs />
         </Match>
       </Switch>
     </box>
