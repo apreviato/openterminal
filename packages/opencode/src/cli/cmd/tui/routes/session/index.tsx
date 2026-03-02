@@ -244,7 +244,6 @@ export function Session() {
         `${logo[0] ?? ""}`,
         `${logo[1] ?? ""}`,
         `${logo[2] ?? ""}`,
-        `${logo[3] ?? ""}`,
         ``,
         `  ${weak("Session")}${UI.Style.TEXT_NORMAL_BOLD}${title}${UI.Style.TEXT_NORMAL}`,
         `  ${weak("Continue")}${UI.Style.TEXT_NORMAL_BOLD}openterminal -s ${session()?.id}${UI.Style.TEXT_NORMAL}`,

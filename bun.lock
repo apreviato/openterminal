@@ -23,11 +23,11 @@
         "turbo": "2.5.6",
       },
     },
-    "packages/opencode": {
-      "name": "opencode",
+    "packages/openterminal": {
+      "name": "openterminal",
       "version": "1.2.15",
       "bin": {
-        "opencode": "./bin/opencode",
+        "openterminal": "./bin/openterminal",
       },
       "dependencies": {
         "@actions/core": "1.11.1",
