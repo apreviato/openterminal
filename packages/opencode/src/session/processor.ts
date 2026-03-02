@@ -262,7 +262,8 @@ export namespace SessionProcessor {
                     }
                     // If JSON representation contains "tool", preserve tool-calls semantics
                     if (JSON.stringify(raw).toLowerCase().includes("tool")) return "tool-calls"
-                    return "unknown"
+                    // Unknown object with no tool indicator — treat as normal completion
+                    return "stop"
                   })()
                   input.assistantMessage.finish = finishReason
                   input.assistantMessage.cost += usage.cost

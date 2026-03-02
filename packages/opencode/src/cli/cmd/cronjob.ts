@@ -158,6 +158,7 @@ const CronjobRunCommand = cmd({
       { permission: "question", action: "deny", pattern: "*" },
       { permission: "plan_enter", action: "deny", pattern: "*" },
       { permission: "plan_exit", action: "deny", pattern: "*" },
+      ...(job.permissions ?? []),
     ]
 
     // Capture in const so TypeScript narrows the type in closures
@@ -194,7 +195,6 @@ const CronjobRunCommand = cmd({
       // Subscribe to events and wait for idle
       async function loop() {
         const events = await sdk.event.subscribe()
-        console.log(`Subscribed to events for session ${sessionID}, waiting for completion...`)
         for await (const event of events.stream) {
           if (event.type === "session.error") {
             console.error(`Received session error for session ${sessionID}:`, event.properties)
@@ -216,7 +216,6 @@ const CronjobRunCommand = cmd({
           }
 
           if (event.type === "message.part.updated") {
-            console.log(`Received part update for session ${sessionID}:`, event.properties)
             const part = (event.properties as any).part
             if (part?.sessionID === sessionID) logger.trackPart(part)
           }
@@ -241,10 +240,9 @@ const CronjobRunCommand = cmd({
       UI.println(
         UI.Style.TEXT_INFO_BOLD + "▶",
         UI.Style.TEXT_NORMAL +
-          `Running cronjob "${resolvedJob.name}"` +
+          `Started cronjob "${resolvedJob.name}"` +
           (jobAgent ? UI.Style.TEXT_DIM + ` [agent: ${jobAgent}]` : ""),
       )
-      console.log("prompt:", resolvedJob.prompt)
       sdk.session.prompt({
         sessionID,
         agent: jobAgent,
@@ -255,7 +253,7 @@ const CronjobRunCommand = cmd({
         failed
           ? UI.Style.TEXT_DANGER_BOLD + "✗"
           : UI.Style.TEXT_INFO_BOLD + "✓",
-        UI.Style.TEXT_NORMAL + `Cronjob "${resolvedJob.name}" ${failed ? "failed" : "completed"}`,
+        UI.Style.TEXT_NORMAL + `Cronjob "${resolvedJob.name}" ${failed ? "failed" : "running"}`,
         UI.Style.TEXT_DIM + `→ ${Cronjob.logPath()}`,
       )
       await loop().catch(async (e) => {
@@ -421,6 +419,7 @@ const CronjobCreateCommand = cmd({
           active: !args.inactive,
           agent: agentName,
           prompt: jobPrompt,
+          permissions: [],
         }
 
         try {

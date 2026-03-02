@@ -8,6 +8,7 @@ import { TextAttributes } from "@opentui/core"
 import { Toast } from "@tui/ui/toast"
 import { Cronjob } from "@/cronjob"
 import { DialogCronjob } from "@tui/component/dialog-cronjob"
+import { DialogCronjobRun } from "@tui/component/dialog-cronjob-run"
 
 export function Cronjobs() {
   const { theme } = useTheme()
@@ -85,6 +86,23 @@ export function Cronjobs() {
             variant: "error",
           })
         })
+      evt.preventDefault()
+      return
+    }
+
+    // r = run selected job now
+    if (evt.name === "r" && !evt.ctrl && list.length > 0) {
+      const job = list[clamp(sel, list.length)]
+      if (!job) return
+      dialog.replace(() => (
+        <DialogCronjobRun
+          job={job}
+          onDone={() => {
+            dialog.clear()
+            reload()
+          }}
+        />
+      ))
       evt.preventDefault()
       return
     }
@@ -206,6 +224,9 @@ export function Cronjobs() {
       >
         <text fg={theme.textMuted}>
           <span style={{ fg: theme.text }}>c</span> create
+        </text>
+        <text fg={theme.textMuted}>
+          <span style={{ fg: theme.text }}>r</span> run
         </text>
         <text fg={theme.textMuted}>
           <span style={{ fg: theme.text }}>t</span> toggle

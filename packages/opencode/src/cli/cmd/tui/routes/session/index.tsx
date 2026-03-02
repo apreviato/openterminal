@@ -1667,7 +1667,7 @@ function InlineTool(props: {
     >
       <text paddingLeft={3} fg={fg()} attributes={denied() ? TextAttributes.STRIKETHROUGH : undefined}>
         <Show fallback={<>~ {props.pending}</>} when={props.complete}>
-          <span style={{ fg: props.iconColor }}>{props.icon}</span> {props.children}
+          <span style={{ fg: props.iconColor }}>{props.icon}</span>{" "}{props.children}
         </Show>
       </text>
       <Show when={error() && !denied()}>

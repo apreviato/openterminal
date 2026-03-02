@@ -63,6 +63,9 @@ export namespace SessionRetry {
     if (MessageV2.ContextOverflowError.isInstance(error)) return undefined
     if (MessageV2.APIError.isInstance(error)) {
       if (!error.data.isRetryable) return undefined
+      // Ollama model crash — non-recoverable by retrying
+      const msg = error.data.message.toLowerCase()
+      if (msg.includes("model runner") || msg.includes("unexpectedly stopped")) return undefined
       if (error.data.responseBody?.includes("FreeUsageLimitError"))
         return `Free usage exceeded`
       return error.data.message.includes("Overloaded") ? "Provider is overloaded" : error.data.message
