@@ -27,7 +27,7 @@ export const ReadTool = Tool.define("read", {
   }),
   async execute(params, ctx) {
     if (params.offset !== undefined && params.offset < 1) {
-      throw new Error("offset must be greater than or equal to 1")
+      params.offset = 1
     }
     let filepath = params.filePath
     if (!path.isAbsolute(filepath)) {
