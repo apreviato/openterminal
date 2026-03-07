@@ -11,7 +11,6 @@ import { CodexAuthPlugin } from "./codex"
 import { Session } from "../session"
 import { NamedError } from "@opencode-ai/util/error"
 import { CopilotAuthPlugin } from "./copilot"
-import { gitlabAuthPlugin as GitlabAuthPlugin } from "@gitlab/opencode-gitlab-auth"
 
 export namespace Plugin {
   const log = Log.create({ service: "plugin" })
@@ -19,7 +18,19 @@ export namespace Plugin {
   const BUILTIN = ["opencode-anthropic-auth@0.0.13"]
 
   // Built-in plugins that are directly imported (not installed from npm)
-  const INTERNAL_PLUGINS: PluginInstance[] = [CodexAuthPlugin, CopilotAuthPlugin, GitlabAuthPlugin]
+  const INTERNAL_PLUGINS: PluginInstance[] = [CodexAuthPlugin, CopilotAuthPlugin]
+
+  async function getInternalPlugins() {
+    const plugins = [...INTERNAL_PLUGINS]
+    try {
+      const mod = await import("@gitlab/opencode-gitlab-auth")
+      const gitlabPlugin = (mod.gitlabAuthPlugin ?? mod.default) as PluginInstance | undefined
+      if (gitlabPlugin) plugins.push(gitlabPlugin)
+    } catch {
+      // optional plugin, skip when package is not installed
+    }
+    return plugins
+  }
 
   const state = Instance.state(async () => {
     const client = createOpencodeClient({
@@ -39,7 +50,7 @@ export namespace Plugin {
       $: Bun.$,
     }
 
-    for (const plugin of INTERNAL_PLUGINS) {
+    for (const plugin of await getInternalPlugins()) {
       log.info("loading internal plugin", { name: plugin.name })
       const init = await plugin(input).catch((err) => {
         log.error("failed to load internal plugin", { name: plugin.name, error: err })
