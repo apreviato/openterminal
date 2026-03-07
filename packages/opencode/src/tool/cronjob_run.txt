@@ -5,6 +5,7 @@ IMPORTANT: This tool always asks the user for confirmation before execution.
 Inputs:
 - `name`: cronjob name
 - `agent` (optional): override configured agent for this test run
+- `model` (optional): override configured model for this test run
 - `allow_inactive` (optional, default true): if true, allows testing even when job is inactive
 - `timeout_ms` (optional): maximum wait time for the spawned CLI process
 

@@ -8,7 +8,7 @@ import DESCRIPTION from "./cronjob_run.txt"
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000
 
-async function confirmRun(ctx: Tool.Context, job: Cronjob.Info, agentOverride: string) {
+async function confirmRun(ctx: Tool.Context, job: Cronjob.Info, agentOverride: string, modelOverride: string) {
   try {
     const answers = await Question.ask({
       sessionID: ctx.sessionID,
@@ -19,7 +19,8 @@ async function confirmRun(ctx: Tool.Context, job: Cronjob.Info, agentOverride: s
           question:
             `Run cronjob \"${job.name}\" now for testing? Schedule: ${job.cron}. ` +
             `State: ${job.active ? "active" : "inactive"}. ` +
-            `Agent: ${agentOverride || job.agent || "(default)"}.`,
+            `Agent: ${agentOverride || job.agent || "(default)"}. ` +
+            `Model: ${modelOverride || job.model || "(default)"}.`,
           options: [
             { label: "Confirm", description: "Run this cronjob now" },
             { label: "Cancel", description: "Do not run" },
@@ -63,6 +64,7 @@ export const CronjobRunTool = Tool.define("cronjob_run", {
   parameters: z.object({
     name: z.string().describe("Cronjob name to execute"),
     agent: z.string().describe("Optional agent override for this run").optional(),
+    model: z.string().describe("Optional model override for this run").optional(),
     allow_inactive: z.boolean().describe("Allow test execution when cronjob is inactive").optional(),
     timeout_ms: z.number().int().positive().describe("Timeout in milliseconds for the CLI run").optional(),
   }),
@@ -76,6 +78,7 @@ export const CronjobRunTool = Tool.define("cronjob_run", {
 
     const name = params.name.trim()
     const agent = (params.agent ?? "").trim()
+    const model = (params.model ?? "").trim()
     const allowInactive = params.allow_inactive ?? true
     const timeout = params.timeout_ms ?? DEFAULT_TIMEOUT_MS
 
@@ -84,7 +87,7 @@ export const CronjobRunTool = Tool.define("cronjob_run", {
     const job = await Cronjob.get(name)
     if (!job) throw new Error(`Cronjob \"${name}\" not found`)
 
-    const confirmed = await confirmRun(ctx, job, agent)
+    const confirmed = await confirmRun(ctx, job, agent, model)
     if (!confirmed) {
       return {
         title: "Cronjob test run cancelled",
@@ -101,6 +104,9 @@ export const CronjobRunTool = Tool.define("cronjob_run", {
     if (allowInactive) command.push("--allow-inactive")
     if (agent) {
       command.push("--agent", agent)
+    }
+    if (model) {
+      command.push("--model", model)
     }
 
     const result = await runCronjobCli(command, ctx.abort, timeout)

@@ -2,6 +2,7 @@ import z from "zod"
 import { Tool } from "./tool"
 import { Cronjob } from "../cronjob"
 import { Question } from "../question"
+import { Provider } from "../provider/provider"
 import DESCRIPTION from "./cronjob_create.txt"
 
 const namePattern = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/
@@ -12,6 +13,7 @@ async function confirmCreate(
     name: string
     cron: string
     agent: string
+    model: string
     active: boolean
     prompt: string
   },
@@ -27,6 +29,7 @@ async function confirmCreate(
           question:
             `Create cronjob \"${input.name}\" with schedule \"${input.cron}\"? ` +
             `Agent: ${input.agent || "(default)"}. State: ${input.active ? "active" : "inactive"}. ` +
+            `Model: ${input.model || "(default)"}. ` +
             `Prompt preview: ${promptPreview}`,
           options: [
             { label: "Confirm", description: "Create this cronjob" },
@@ -50,6 +53,7 @@ export const CronjobCreateTool = Tool.define("cronjob_create", {
     cron: z.string().describe("Cron expression (5 fields, e.g. '0 9 * * 1-5')"),
     prompt: z.string().describe("Prompt sent to the agent when the job runs"),
     agent: z.string().describe("Agent name (empty or omitted = default)").optional(),
+    model: z.string().describe("Model id in provider/model format (empty or omitted = default)").optional(),
     active: z.boolean().describe("Whether job should be active after creation (default: true)").optional(),
   }),
   async execute(params, ctx) {
@@ -64,6 +68,7 @@ export const CronjobCreateTool = Tool.define("cronjob_create", {
     const cron = params.cron.trim()
     const prompt = params.prompt.trim()
     const agent = (params.agent ?? "").trim()
+    const model = (params.model ?? "").trim()
     const active = params.active ?? true
 
     if (!namePattern.test(name)) {
@@ -77,10 +82,15 @@ export const CronjobCreateTool = Tool.define("cronjob_create", {
       throw new Error("Invalid cron expression. Expected exactly 5 fields: minute hour day month weekday")
     }
 
+    if (model) {
+      const parsedModel = Provider.parseModel(model)
+      await Provider.getModel(parsedModel.providerID, parsedModel.modelID)
+    }
+
     const existing = await Cronjob.get(name)
     if (existing) throw new Error(`Cronjob \"${name}\" already exists`)
 
-    const confirmed = await confirmCreate(ctx, { name, cron, prompt, agent, active })
+    const confirmed = await confirmCreate(ctx, { name, cron, prompt, agent, model, active })
     if (!confirmed) {
       return {
         title: "Cronjob creation cancelled",
@@ -98,6 +108,7 @@ export const CronjobCreateTool = Tool.define("cronjob_create", {
       cron,
       prompt,
       agent,
+      model,
       active,
       permissions: [],
     }
@@ -106,7 +117,9 @@ export const CronjobCreateTool = Tool.define("cronjob_create", {
 
     return {
       title: `Cronjob created: ${name}`,
-      output: `Created cronjob \"${name}\" (${active ? "active" : "inactive"}) on schedule \"${cron}\" with agent ${agent || "(default)"}.`,
+      output:
+        `Created cronjob \"${name}\" (${active ? "active" : "inactive"}) on schedule \"${cron}\" ` +
+        `with agent ${agent || "(default)"} and model ${model || "(default)"}.`,
       metadata: {
         confirmed: true,
         name,

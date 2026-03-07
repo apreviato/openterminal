@@ -7,5 +7,5 @@ Behavior:
 - Returns all jobs sorted by name with schedule, status, and agent
 
 Output format:
-- One line per cronjob: `name | cron | active|inactive | agent`
+- One line per cronjob: `name | cron | active|inactive | agent | model`
 - If no jobs exist, returns a clear empty-state message

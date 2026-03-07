@@ -59,7 +59,7 @@ export const CronjobListTool = Tool.define("cronjob_list", {
         : jobs
             .map(
               (job) =>
-                `${job.name} | ${job.cron} | ${job.active ? "active" : "inactive"} | ${job.agent || "(default)"}`,
+                `${job.name} | ${job.cron} | ${job.active ? "active" : "inactive"} | ${job.agent || "(default)"} | ${job.model || "(default)"}`,
             )
             .join("\n")
 

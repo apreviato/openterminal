@@ -16,6 +16,8 @@ export namespace Cronjob {
     active: boolean
     /** Agent name, empty string = use default agent */
     agent: string
+    /** Model id as provider/model, empty string = use default model */
+    model: string
     prompt: string
     /** Per-tool permission rules for this job */
     permissions: PermissionRule[]
@@ -46,11 +48,16 @@ export namespace Cronjob {
   }
 
   function serialize(job: Info): string {
-    const base = [job.name, job.cron, job.active ? "active" : "inactive", job.agent, job.prompt].join("\n")
+    const base = [job.name, job.cron, job.active ? "active" : "inactive", job.agent, job.model, job.prompt].join("\n")
     if (job.permissions.length > 0) {
       return base + "\n" + JSON.stringify(job.permissions)
     }
     return base
+  }
+
+  function isLikelyModel(value: string): boolean {
+    // provider/model (model may include additional slashes)
+    return /^[a-z0-9._-]+\/\S+$/i.test(value)
   }
 
   function parse(content: string, filename: string): Info | undefined {
@@ -60,8 +67,13 @@ export namespace Cronjob {
     const cron = lines[1].trim()
     const active = lines[2].trim() === "active"
     const agent = lines[3].trim()
+    const modelLine = lines[4]?.trim() ?? ""
 
-    let promptLines = lines.slice(4)
+    const hasModelLine = modelLine === "" || isLikelyModel(modelLine)
+    const model = hasModelLine ? modelLine : ""
+
+    // Backward compatibility: older format had no model line
+    let promptLines = lines.slice(hasModelLine ? 5 : 4)
     let permissions: PermissionRule[] = []
 
     // If last non-empty line is a JSON array, treat it as permissions
@@ -74,8 +86,7 @@ export namespace Cronjob {
           const parsed = JSON.parse(lastLine)
           if (
             Array.isArray(parsed) &&
-            (parsed.length === 0 ||
-              (parsed[0] && typeof parsed[0].permission === "string"))
+            (parsed.length === 0 || (parsed[0] && typeof parsed[0].permission === "string"))
           ) {
             permissions = parsed
             promptLines = promptLines.slice(0, lastIdx)
@@ -89,7 +100,7 @@ export namespace Cronjob {
     // name must match filename stem
     const stem = path.basename(filename, ".md")
     if (name !== stem) return undefined
-    return { name, cron, active, agent, prompt, permissions }
+    return { name, cron, active, agent, model, prompt, permissions }
   }
 
   export async function list(): Promise<Info[]> {
@@ -270,8 +281,13 @@ export namespace Cronjob {
     // Weekly: M H * * D or M H * * D-D or M H * * D,D,...
     if (dom === "*" && dow !== "*") {
       const dayMap: Record<string, string> = {
-        "0": "SUN", "1": "MON", "2": "TUE", "3": "WED",
-        "4": "THU", "5": "FRI", "6": "SAT",
+        "0": "SUN",
+        "1": "MON",
+        "2": "TUE",
+        "3": "WED",
+        "4": "THU",
+        "5": "FRI",
+        "6": "SAT",
         "7": "SUN",
       }
       // Handle ranges like 1-5

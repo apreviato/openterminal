@@ -9,6 +9,7 @@ import { PermissionNext } from "../../permission/next"
 import * as prompts from "@clack/prompts"
 import { Agent } from "../../agent/agent"
 import { Instance } from "../../project/instance"
+import { Provider } from "../../provider/provider"
 import fs from "fs/promises"
 import path from "path"
 
@@ -28,6 +29,7 @@ class CronjobLogger {
     private readonly job: Cronjob.Info,
     private readonly sessionID: string,
     private readonly agent: string | undefined,
+    private readonly model: string | undefined,
   ) {}
 
   /** Write the opening header to the log file immediately. */
@@ -38,6 +40,7 @@ class CronjobLogger {
       `[${ts()}]  START  ${this.job.name}`,
       `  cron    : ${this.job.cron}`,
       `  agent   : ${this.agent || "(default)"}`,
+      `  model   : ${this.model || "(default)"}`,
       `  session : ${this.sessionID}`,
       `  prompt  : ${this.job.prompt.replace(/\n/g, "\n           ")}`,
       "",
@@ -133,6 +136,10 @@ const CronjobRunCommand = cmd({
         type: "string",
         describe: "override the agent configured for this cronjob",
       })
+      .option("model", {
+        type: "string",
+        describe: "override the model configured for this cronjob (provider/model)",
+      })
       .option("allow-inactive", {
         type: "boolean",
         default: false,
@@ -160,6 +167,9 @@ const CronjobRunCommand = cmd({
     const resolvedJob = job
     // --agent CLI flag overrides the agent stored in the .md file
     const jobAgent = args.agent || resolvedJob.agent || undefined
+    // --model CLI flag overrides the model stored in the .md file
+    const jobModelID = args.model || resolvedJob.model || ""
+    const jobModel = jobModelID ? Provider.parseModel(jobModelID) : undefined
 
     await bootstrap(process.cwd(), async () => {
       const fetchFn = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -182,7 +192,11 @@ const CronjobRunCommand = cmd({
         process.exit(1)
       }
 
-      const logger = new CronjobLogger(resolvedJob, sessionID, jobAgent)
+      if (jobModel) {
+        await Provider.getModel(jobModel.providerID, jobModel.modelID)
+      }
+
+      const logger = new CronjobLogger(resolvedJob, sessionID, jobAgent, jobModelID || undefined)
       await logger.writeStart()
 
       let failed = false
@@ -231,11 +245,13 @@ const CronjobRunCommand = cmd({
         UI.Style.TEXT_INFO_BOLD + "▶",
         UI.Style.TEXT_NORMAL +
           `Started cronjob "${resolvedJob.name}"` +
-          (jobAgent ? UI.Style.TEXT_DIM + ` [agent: ${jobAgent}]` : ""),
+          (jobAgent ? UI.Style.TEXT_DIM + ` [agent: ${jobAgent}]` : "") +
+          (jobModelID ? UI.Style.TEXT_DIM + ` [model: ${jobModelID}]` : ""),
       )
       sdk.session.prompt({
         sessionID,
         agent: jobAgent,
+        model: jobModel,
         parts: [{ type: "text", text: resolvedJob.prompt }],
       })
 
@@ -284,6 +300,10 @@ const CronjobCreateCommand = cmd({
       .option("agent", {
         type: "string",
         describe: "agent to use (empty = default agent)",
+      })
+      .option("model", {
+        type: "string",
+        describe: "model to use in provider/model format (empty = default model)",
       })
       .option("prompt", {
         type: "string",
@@ -384,6 +404,59 @@ const CronjobCreateCommand = cmd({
           agentName = agentResult as string
         }
 
+        // ── Model ─────────────────────────────────────────────────────────
+        let modelName: string
+        if (args.model !== undefined) {
+          modelName = args.model.trim()
+        } else if (isFullyNonInteractive) {
+          modelName = ""
+        } else {
+          const providers = await Provider.list().catch(() => ({}))
+          const defaultModel = await Provider.defaultModel().catch(() => undefined)
+          const defaultModelID = defaultModel ? `${defaultModel.providerID}/${defaultModel.modelID}` : ""
+
+          const modelOptions: Array<{ value: string; label: string; hint?: string }> = [
+            {
+              value: "",
+              label: "(default)",
+              hint: defaultModelID ? `Use default (${defaultModelID})` : "Use configured default model",
+            },
+          ]
+
+          for (const provider of Object.values(providers).sort((a, b) => a.id.localeCompare(b.id))) {
+            for (const model of Object.values(provider.models).sort((a, b) => a.id.localeCompare(b.id))) {
+              modelOptions.push({
+                value: `${provider.id}/${model.id}`,
+                label: `${provider.id}/${model.id}`,
+                hint: model.name && model.name !== model.id ? model.name : undefined,
+              })
+            }
+          }
+
+          const modelResult = await prompts.select({
+            message: "Model",
+            options: modelOptions,
+            maxItems: 10,
+          })
+          if (prompts.isCancel(modelResult)) throw new UI.CancelledError()
+          modelName = (modelResult as string).trim()
+        }
+
+        if (modelName) {
+          try {
+            const parsedModel = Provider.parseModel(modelName)
+            await Provider.getModel(parsedModel.providerID, parsedModel.modelID)
+          } catch (err) {
+            const message = err instanceof Error ? err.message : `Invalid model: ${modelName}`
+            if (isFullyNonInteractive) {
+              console.error(`Error: ${message}`)
+              process.exit(1)
+            }
+            prompts.log.error(message)
+            throw new UI.CancelledError()
+          }
+        }
+
         // ── Prompt ───────────────────────────────────────────────────────
         let jobPrompt: string
         if (args.prompt) {
@@ -404,6 +477,7 @@ const CronjobCreateCommand = cmd({
           cron,
           active: !args.inactive,
           agent: agentName,
+          model: modelName,
           prompt: jobPrompt,
           permissions: [],
         }
@@ -426,7 +500,9 @@ const CronjobCreateCommand = cmd({
           console.log(`Cronjob "${name}" created`)
         } else {
           prompts.log.success(`Cronjob "${name}" created (${job.active ? "active" : "inactive"})`)
-          prompts.log.info(`Schedule: ${cron}${agentName ? `  Agent: ${agentName}` : ""}`)
+          prompts.log.info(
+            `Schedule: ${cron}${agentName ? `  Agent: ${agentName}` : ""}${modelName ? `  Model: ${modelName}` : ""}`,
+          )
           prompts.outro("Done")
         }
       },
@@ -452,8 +528,17 @@ const CronjobListCommand = cmd({
     }
     for (const job of jobs) {
       const status = job.active ? UI.Style.TEXT_SUCCESS_BOLD + "● " : UI.Style.TEXT_DIM + "○ "
-      const agent = job.agent ? UI.Style.TEXT_DIM + ` [${job.agent}]` : ""
-      UI.println(status + UI.Style.TEXT_NORMAL + job.name.padEnd(24) + UI.Style.TEXT_DIM + job.cron.padEnd(16) + agent)
+      const details = [job.agent ? `agent:${job.agent}` : "", job.model ? `model:${job.model}` : ""]
+        .filter(Boolean)
+        .join(" ")
+      UI.println(
+        status +
+          UI.Style.TEXT_NORMAL +
+          job.name.padEnd(24) +
+          UI.Style.TEXT_DIM +
+          job.cron.padEnd(16) +
+          (details ? ` [${details}]` : ""),
+      )
     }
     UI.empty()
     UI.println(UI.Style.TEXT_DIM + `${jobs.length} job${jobs.length === 1 ? "" : "s"} total`)

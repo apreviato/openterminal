@@ -323,10 +323,8 @@ Complex expressions (ranges, lists, step values beyond `*/N`) are not supported 
 | Model discovery            | Fetches from models.dev         | Disabled — configure models manually in `opencode.json`                 |
 | Installation               | npm / brew / curl installer     | Local scripts (`install` / `install.ps1`)                               |
 | Upgrade command            | Built-in auto-upgrade           | Disabled — use `git pull`                                               |
-| Web / PR / GitHub commands | Available                       | Removed                                                                 |
 | Data directory             | `~/.local/share/opencode/`      | `~/.local/share/openterminal/`                                          |
 | Config directory           | `~/.config/opencode/`           | `~/.config/openterminal/`                                               |
-| Project config dir         | `.opencode/`                    | `.openterminal/`                                                        |
 | Database                   | `opencode.db`                   | `openterminal.db`                                                       |
 | Internal RPC hostname      | `opencode.internal`             | `openterminal.internal`                                                 |
 | Cronjobs                   | Not available                   | Built-in (`/cronjobs`, `openterminal cronjob`)                          |

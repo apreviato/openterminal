@@ -4,6 +4,7 @@ import { DialogSelect } from "@tui/ui/dialog-select"
 import { useDialog } from "@tui/ui/dialog"
 import { useToast } from "@tui/ui/toast"
 import { useLocal } from "@tui/context/local"
+import { useSync } from "@tui/context/sync"
 import { Cronjob } from "@/cronjob"
 
 // ─── Shared types / data ─────────────────────────────────────────────────────
@@ -16,61 +17,61 @@ type PermissionRule = Cronjob.PermissionRule
 
 const SCHEDULE_PRESETS = [
   { title: "Every 15 minutes", value: "*/15 * * * *", description: "*/15 * * * *" },
-  { title: "Every hour",       value: "0 * * * *",    description: "0 * * * *" },
-  { title: "Daily at 9am",     value: "0 9 * * *",    description: "0 9 * * *" },
-  { title: "Weekdays at 9am",  value: "0 9 * * 1-5",  description: "0 9 * * 1-5" },
-  { title: "Every Monday",     value: "0 9 * * 1",    description: "0 9 * * 1" },
-  { title: "Monthly (1st)",    value: "0 9 1 * *",    description: "0 9 1 * *" },
-  { title: "Custom…",          value: "__custom__",   description: "Enter a cron expression manually" },
+  { title: "Every hour", value: "0 * * * *", description: "0 * * * *" },
+  { title: "Daily at 9am", value: "0 9 * * *", description: "0 9 * * *" },
+  { title: "Weekdays at 9am", value: "0 9 * * 1-5", description: "0 9 * * 1-5" },
+  { title: "Every Monday", value: "0 9 * * 1", description: "0 9 * * 1" },
+  { title: "Monthly (1st)", value: "0 9 1 * *", description: "0 9 1 * *" },
+  { title: "Custom…", value: "__custom__", description: "Enter a cron expression manually" },
 ]
 
 const PERMISSION_PRESETS = [
-  { title: "Ask for each tool",  value: "ask-all",    description: "Agent asks permission before each action (default)" },
-  { title: "Allow all tools",    value: "allow-all",  description: "Read, write, shell and web — no restrictions" },
-  { title: "Read-only",          value: "read-only",  description: "Allow read/search; deny bash, writes and web fetch" },
-  { title: "No shell",           value: "no-shell",   description: "Allow read, search and web; deny bash and writes" },
-  { title: "Custom…",            value: "__custom__", description: "Configure allow / deny / ask per tool" },
+  { title: "Ask for each tool", value: "ask-all", description: "Agent asks permission before each action (default)" },
+  { title: "Allow all tools", value: "allow-all", description: "Read, write, shell and web — no restrictions" },
+  { title: "Read-only", value: "read-only", description: "Allow read/search; deny bash, writes and web fetch" },
+  { title: "No shell", value: "no-shell", description: "Allow read, search and web; deny bash and writes" },
+  { title: "Custom…", value: "__custom__", description: "Configure allow / deny / ask per tool" },
 ]
 
 const PRESET_RULES: Record<string, PermissionRule[]> = {
   "ask-all": [],
   "allow-all": [
-    { permission: "bash",     pattern: "*", action: "allow" },
-    { permission: "edit",     pattern: "*", action: "allow" },
-    { permission: "read",     pattern: "*", action: "allow" },
-    { permission: "glob",     pattern: "*", action: "allow" },
-    { permission: "grep",     pattern: "*", action: "allow" },
+    { permission: "bash", pattern: "*", action: "allow" },
+    { permission: "edit", pattern: "*", action: "allow" },
+    { permission: "read", pattern: "*", action: "allow" },
+    { permission: "glob", pattern: "*", action: "allow" },
+    { permission: "grep", pattern: "*", action: "allow" },
     { permission: "webfetch", pattern: "*", action: "allow" },
   ],
   "read-only": [
-    { permission: "read",     pattern: "*", action: "allow" },
-    { permission: "glob",     pattern: "*", action: "allow" },
-    { permission: "grep",     pattern: "*", action: "allow" },
-    { permission: "bash",     pattern: "*", action: "deny" },
-    { permission: "edit",     pattern: "*", action: "deny" },
+    { permission: "read", pattern: "*", action: "allow" },
+    { permission: "glob", pattern: "*", action: "allow" },
+    { permission: "grep", pattern: "*", action: "allow" },
+    { permission: "bash", pattern: "*", action: "deny" },
+    { permission: "edit", pattern: "*", action: "deny" },
     { permission: "webfetch", pattern: "*", action: "deny" },
   ],
   "no-shell": [
-    { permission: "read",     pattern: "*", action: "allow" },
-    { permission: "glob",     pattern: "*", action: "allow" },
-    { permission: "grep",     pattern: "*", action: "allow" },
+    { permission: "read", pattern: "*", action: "allow" },
+    { permission: "glob", pattern: "*", action: "allow" },
+    { permission: "grep", pattern: "*", action: "allow" },
     { permission: "webfetch", pattern: "*", action: "allow" },
-    { permission: "bash",     pattern: "*", action: "deny" },
-    { permission: "edit",     pattern: "*", action: "deny" },
+    { permission: "bash", pattern: "*", action: "deny" },
+    { permission: "edit", pattern: "*", action: "deny" },
   ],
 }
 
 const CUSTOM_TOOLS = [
-  { key: "bash",     label: "Shell commands (bash)" },
-  { key: "edit",     label: "File writes (edit / write)" },
+  { key: "bash", label: "Shell commands (bash)" },
+  { key: "edit", label: "File writes (edit / write)" },
   { key: "webfetch", label: "Web fetch" },
-  { key: "read",     label: "File reads" },
+  { key: "read", label: "File reads" },
 ]
 
 const TOOL_ACTIONS = [
-  { title: "Ask (default)", value: "ask",   description: "Agent requests permission before use" },
-  { title: "Allow",         value: "allow", description: "Always allow without prompting" },
-  { title: "Deny",          value: "deny",  description: "Never allow; agent cannot use this tool" },
+  { title: "Ask (default)", value: "ask", description: "Agent requests permission before use" },
+  { title: "Allow", value: "allow", description: "Always allow without prompting" },
+  { title: "Deny", value: "deny", description: "Never allow; agent cannot use this tool" },
 ]
 
 function validateName(value: string): string | undefined {
@@ -89,9 +90,7 @@ export function DialogCronjob(props: WizardProps) {
     <DialogPrompt
       title="Cronjob name"
       placeholder="e.g. daily-standup"
-      description={() => (
-        <text>Lowercase letters, digits, hyphens. Must be unique.</text>
-      )}
+      description={() => <text>Lowercase letters, digits, hyphens. Must be unique.</text>}
       onConfirm={(value) => {
         const err = validateName(value)
         if (err) {
@@ -99,9 +98,7 @@ export function DialogCronjob(props: WizardProps) {
           return
         }
         const name = value.trim()
-        dialog.replace(() => (
-          <ScheduleStep name={name} onDone={props.onDone} />
-        ))
+        dialog.replace(() => <ScheduleStep name={name} onDone={props.onDone} />)
       }}
       onCancel={() => dialog.clear()}
     />
@@ -120,13 +117,9 @@ function ScheduleStep(props: { name: string; onDone: () => void }) {
       onSelect={(option) => {
         const val = option.value as string
         if (val === "__custom__") {
-          dialog.replace(() => (
-            <CustomScheduleStep name={props.name} onDone={props.onDone} />
-          ))
+          dialog.replace(() => <CustomScheduleStep name={props.name} onDone={props.onDone} />)
         } else {
-          dialog.replace(() => (
-            <AgentStep name={props.name} cron={val} onDone={props.onDone} />
-          ))
+          dialog.replace(() => <AgentStep name={props.name} cron={val} onDone={props.onDone} />)
         }
       }}
     />
@@ -143,9 +136,7 @@ function CustomScheduleStep(props: { name: string; onDone: () => void }) {
     <DialogPrompt
       title="Cron expression"
       placeholder="e.g. 0 9 * * 1-5"
-      description={() => (
-        <text>Standard 5-field cron: minute hour day month weekday</text>
-      )}
+      description={() => <text>Standard 5-field cron: minute hour day month weekday</text>}
       onConfirm={(value) => {
         const expr = value.trim()
         if (!expr) {
@@ -156,14 +147,10 @@ function CustomScheduleStep(props: { name: string; onDone: () => void }) {
           toast.show({ message: "Must have exactly 5 fields (minute hour day month weekday)", variant: "error" })
           return
         }
-        dialog.replace(() => (
-          <AgentStep name={props.name} cron={expr} onDone={props.onDone} />
-        ))
+        dialog.replace(() => <AgentStep name={props.name} cron={expr} onDone={props.onDone} />)
       }}
       onCancel={() => {
-        dialog.replace(() => (
-          <ScheduleStep name={props.name} onDone={props.onDone} />
-        ))
+        dialog.replace(() => <ScheduleStep name={props.name} onDone={props.onDone} />)
       }}
     />
   )
@@ -195,17 +182,67 @@ function AgentStep(props: { name: string; cron: string; onDone: () => void }) {
       options={options()}
       onSelect={(option) => {
         const agent = option.value as string
+        dialog.replace(() => <ModelStep name={props.name} cron={props.cron} agent={agent} onDone={props.onDone} />)
+      }}
+    />
+  )
+}
+
+// ─── Step 4: Model ────────────────────────────────────────────────────────────
+
+function ModelStep(props: { name: string; cron: string; agent: string; onDone: () => void }) {
+  const dialog = useDialog()
+  const sync = useSync()
+
+  const options = createMemo(() => {
+    const defaultFromConfig = typeof sync.data.config.model === "string" ? sync.data.config.model : ""
+    const defaultFromProvider = (() => {
+      for (const provider of sync.data.provider) {
+        const modelID = sync.data.provider_default[provider.id]
+        if (modelID) return `${provider.id}/${modelID}`
+      }
+      return ""
+    })()
+    const defaultModelID = defaultFromConfig || defaultFromProvider
+
+    const list: Array<{ title: string; value: string; description?: string }> = [
+      {
+        title: "(default)",
+        value: "",
+        description: defaultModelID ? `Use default (${defaultModelID})` : "Use configured default model",
+      },
+    ]
+
+    for (const provider of [...sync.data.provider].sort((a, b) => a.id.localeCompare(b.id))) {
+      for (const [modelID, model] of Object.entries(provider.models).sort(([a], [b]) => a.localeCompare(b))) {
+        list.push({
+          title: `${provider.id}/${modelID}`,
+          value: `${provider.id}/${modelID}`,
+          description: model.name && model.name !== modelID ? model.name : undefined,
+        })
+      }
+    }
+
+    return list
+  })
+
+  return (
+    <DialogSelect
+      title="Model"
+      options={options()}
+      onSelect={(option) => {
+        const model = option.value as string
         dialog.replace(() => (
-          <PromptStep name={props.name} cron={props.cron} agent={agent} onDone={props.onDone} />
+          <PromptStep name={props.name} cron={props.cron} agent={props.agent} model={model} onDone={props.onDone} />
         ))
       }}
     />
   )
 }
 
-// ─── Step 4: Prompt ───────────────────────────────────────────────────────────
+// ─── Step 5: Prompt ───────────────────────────────────────────────────────────
 
-function PromptStep(props: { name: string; cron: string; agent: string; onDone: () => void }) {
+function PromptStep(props: { name: string; cron: string; agent: string; model: string; onDone: () => void }) {
   const dialog = useDialog()
   const toast = useToast()
 
@@ -213,9 +250,7 @@ function PromptStep(props: { name: string; cron: string; agent: string; onDone: 
     <DialogPrompt
       title="Prompt"
       placeholder="What should the agent do when this job runs?"
-      description={() => (
-        <text>This prompt is sent to the agent on each scheduled run.</text>
-      )}
+      description={() => <text>This prompt is sent to the agent on each scheduled run.</text>}
       onConfirm={(value) => {
         if (!value.trim()) {
           toast.show({ message: "Prompt is required", variant: "error" })
@@ -226,6 +261,7 @@ function PromptStep(props: { name: string; cron: string; agent: string; onDone: 
             name={props.name}
             cron={props.cron}
             agent={props.agent}
+            model={props.model}
             prompt={value.trim()}
             onDone={props.onDone}
           />
@@ -233,19 +269,20 @@ function PromptStep(props: { name: string; cron: string; agent: string; onDone: 
       }}
       onCancel={() => {
         dialog.replace(() => (
-          <AgentStep name={props.name} cron={props.cron} onDone={props.onDone} />
+          <ModelStep name={props.name} cron={props.cron} agent={props.agent} onDone={props.onDone} />
         ))
       }}
     />
   )
 }
 
-// ─── Step 5: Permissions ──────────────────────────────────────────────────────
+// ─── Step 6: Permissions ──────────────────────────────────────────────────────
 
 interface JobParams {
   name: string
   cron: string
   agent: string
+  model: string
   prompt: string
   onDone: () => void
 }
@@ -260,6 +297,7 @@ function PermissionsStep(props: JobParams) {
       cron: props.cron,
       active: true,
       agent: props.agent,
+      model: props.model,
       prompt: props.prompt,
       permissions,
     }
@@ -287,9 +325,7 @@ function PermissionsStep(props: JobParams) {
       onSelect={(option) => {
         const val = option.value as string
         if (val === "__custom__") {
-          dialog.replace(() => (
-            <CustomPermStep {...props} toolIndex={0} accumulated={[]} onSave={save} />
-          ))
+          dialog.replace(() => <CustomPermStep {...props} toolIndex={0} accumulated={[]} onSave={save} />)
         } else {
           void save(PRESET_RULES[val] ?? [])
         }
@@ -298,7 +334,7 @@ function PermissionsStep(props: JobParams) {
   )
 }
 
-// ─── Step 5b: Custom per-tool permissions ─────────────────────────────────────
+// ─── Step 6b: Custom per-tool permissions ─────────────────────────────────────
 
 function CustomPermStep(
   props: JobParams & {
@@ -321,13 +357,7 @@ function CustomPermStep(
         const next = rule ? [...props.accumulated, rule] : [...props.accumulated]
 
         if (props.toolIndex + 1 < CUSTOM_TOOLS.length) {
-          dialog.replace(() => (
-            <CustomPermStep
-              {...props}
-              toolIndex={props.toolIndex + 1}
-              accumulated={next}
-            />
-          ))
+          dialog.replace(() => <CustomPermStep {...props} toolIndex={props.toolIndex + 1} accumulated={next} />)
         } else {
           void props.onSave(next)
         }

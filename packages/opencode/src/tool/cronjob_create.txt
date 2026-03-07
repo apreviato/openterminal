@@ -7,6 +7,7 @@ Inputs:
 - `cron`: cron expression (5 fields)
 - `prompt`: task prompt executed on each run
 - `agent` (optional): agent name (empty/default allowed)
+- `model` (optional): model id in provider/model format (empty/default allowed)
 - `active` (optional): whether to create enabled (default: true)
 
 Behavior:
