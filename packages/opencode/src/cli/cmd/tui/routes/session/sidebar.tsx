@@ -51,14 +51,22 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
   })
 
   const context = createMemo(() => {
-    const last = messages().findLast((x) => x.role === "assistant" && x.tokens.output > 0) as AssistantMessage
+    const last = messages().findLast(
+      (x) =>
+        x.role === "assistant" &&
+        (x.tokens.total ??
+          x.tokens.input + x.tokens.output + x.tokens.reasoning + x.tokens.cache.read + x.tokens.cache.write) > 0,
+    ) as AssistantMessage
     if (!last) return
     const total =
+      last.tokens.total ??
       last.tokens.input + last.tokens.output + last.tokens.reasoning + last.tokens.cache.read + last.tokens.cache.write
+    if (total <= 0) return
     const model = sync.data.provider.find((x) => x.id === last.providerID)?.models[last.modelID]
+    const percentage = model?.limit.context ? Math.round((total / model.limit.context) * 100) : null
     return {
-      tokens: total.toLocaleString(),
-      percentage: model?.limit.context ? Math.round((total / model.limit.context) * 100) : null,
+      tokens: total,
+      percentage: percentage && percentage > 0 ? percentage : null,
     }
   })
 
@@ -102,8 +110,12 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
               <text fg={theme.text}>
                 <b>Context</b>
               </text>
-              <text fg={theme.textMuted}>{context()?.tokens ?? 0} tokens</text>
-              <text fg={theme.textMuted}>{context()?.percentage ?? 0}% used</text>
+              <Show when={(context()?.tokens ?? 0) > 0}>
+                <text fg={theme.textMuted}>{context()!.tokens.toLocaleString()} tokens</text>
+              </Show>
+              <Show when={(context()?.percentage ?? 0) > 0}>
+                <text fg={theme.textMuted}>{context()!.percentage}% used</text>
+              </Show>
               <Show when={cost()}>
                 <text fg={theme.textMuted}>{cost()} spent</text>
               </Show>

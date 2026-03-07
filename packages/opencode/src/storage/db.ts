@@ -51,6 +51,11 @@ export namespace Database {
   }
 
   function migrations(dir: string): Journal {
+    if (!existsSync(dir)) {
+      log.warn("migration directory not found, skipping schema migrations", { dir })
+      return []
+    }
+
     const dirs = readdirSync(dir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)

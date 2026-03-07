@@ -35,6 +35,17 @@ export namespace SessionProcessor {
     let attempt = 0
     let needsCompaction = false
 
+    const mergeTokens = (current: MessageV2.Assistant["tokens"], next: MessageV2.Assistant["tokens"]) => ({
+      total: (current.total ?? 0) + (next.total ?? 0),
+      input: current.input + next.input,
+      output: current.output + next.output,
+      reasoning: current.reasoning + next.reasoning,
+      cache: {
+        read: current.cache.read + next.cache.read,
+        write: current.cache.write + next.cache.write,
+      },
+    })
+
     const result = {
       get message() {
         return input.assistantMessage
@@ -267,7 +278,7 @@ export namespace SessionProcessor {
                   })()
                   input.assistantMessage.finish = finishReason
                   input.assistantMessage.cost += usage.cost
-                  input.assistantMessage.tokens = usage.tokens
+                  input.assistantMessage.tokens = mergeTokens(input.assistantMessage.tokens, usage.tokens)
                   await Session.updatePart({
                     id: Identifier.ascending("part"),
                     reason: finishReason,
