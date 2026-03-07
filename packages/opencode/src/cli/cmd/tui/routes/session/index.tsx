@@ -81,6 +81,7 @@ import { formatTranscript } from "../../util/transcript"
 import { UI } from "@/cli/ui.ts"
 import { useTuiConfig } from "../../context/tui-config"
 import { write } from "@/util/compat"
+import { DialogToolDetails } from "./dialog-tool-details"
 
 addDefaultParsers(parsers.parsers)
 
@@ -1613,9 +1614,12 @@ function InlineTool(props: {
   part: ToolPart
 }) {
   const [margin, setMargin] = createSignal(0)
+  const [hover, setHover] = createSignal(false)
   const { theme } = useTheme()
   const ctx = use()
   const sync = useSync()
+  const dialog = useDialog()
+  const renderer = useRenderer()
 
   const permission = createMemo(() => {
     const callID = sync.data.permission[ctx.sessionID]?.at(0)?.tool?.callID
@@ -1638,10 +1642,19 @@ function InlineTool(props: {
       error()?.includes("user dismissed"),
   )
 
+  const handleClick = () => {
+    if (renderer.getSelection()?.getSelectedText()) return
+    dialog.replace(() => <DialogToolDetails part={props.part} onClose={() => dialog.clear()} />)
+  }
+
   return (
     <box
       marginTop={margin()}
       paddingLeft={3}
+      backgroundColor={hover() ? theme.backgroundMenu : undefined}
+      onMouseOver={() => setHover(true)}
+      onMouseOut={() => setHover(false)}
+      onMouseUp={handleClick}
       renderBefore={function () {
         const el = this as BoxRenderable
         const parent = el.parent
