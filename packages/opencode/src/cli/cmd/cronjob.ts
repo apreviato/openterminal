@@ -166,9 +166,11 @@ const CronjobRunCommand = cmd({
     // Capture in const so TypeScript narrows the type in closures
     const resolvedJob = job
     // --agent CLI flag overrides the agent stored in the .md file
-    const jobAgent = args.agent || resolvedJob.agent || undefined
+    const agentOverride = typeof args.agent === "string" ? args.agent.trim() : ""
+    const jobAgent = agentOverride || resolvedJob.agent || undefined
     // --model CLI flag overrides the model stored in the .md file
-    const jobModelID = args.model || resolvedJob.model || ""
+    const modelOverride = typeof args.model === "string" ? args.model.trim() : ""
+    const jobModelID = modelOverride || resolvedJob.model || ""
     const jobModel = jobModelID ? Provider.parseModel(jobModelID) : undefined
 
     await bootstrap(process.cwd(), async () => {
@@ -248,12 +250,21 @@ const CronjobRunCommand = cmd({
           (jobAgent ? UI.Style.TEXT_DIM + ` [agent: ${jobAgent}]` : "") +
           (jobModelID ? UI.Style.TEXT_DIM + ` [model: ${jobModelID}]` : ""),
       )
-      sdk.session.prompt({
+      const promptResult = await sdk.session.prompt({
         sessionID,
         agent: jobAgent,
         model: jobModel,
         parts: [{ type: "text", text: resolvedJob.prompt }],
       })
+      if (promptResult.error) {
+        failed = true
+        const errorData = promptResult.error.data as { message?: unknown } | undefined
+        const err = typeof errorData?.message === "string" ? errorData.message : "Failed to send cronjob prompt"
+        await logger.writeError(err)
+        UI.error(`Cronjob "${resolvedJob.name}" failed to start: ${err}`)
+        await logger.writeFinish(true)
+        process.exit(1)
+      }
 
       UI.println(
         failed ? UI.Style.TEXT_DANGER_BOLD + "✗" : UI.Style.TEXT_INFO_BOLD + "✓",

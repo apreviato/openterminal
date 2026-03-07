@@ -263,26 +263,9 @@ function App() {
     console.log(JSON.stringify(route.data))
   })
 
-  // Update terminal window title based on current route and session
+  // Always force terminal title to OpenTerminal
   createEffect(() => {
-    if (!terminalTitleEnabled() || Flag.OPENCODE_DISABLE_TERMINAL_TITLE) return
-
-    if (route.data.type === "home") {
-      renderer.setTerminalTitle("OpenTerminal")
-      return
-    }
-
-    if (route.data.type === "session") {
-      const session = sync.session.get(route.data.sessionID)
-      if (!session || SessionApi.isDefaultTitle(session.title)) {
-        renderer.setTerminalTitle("OpenTerminal")
-        return
-      }
-
-      // Truncate title to 40 chars max
-      const title = session.title.length > 40 ? session.title.slice(0, 37) + "..." : session.title
-      renderer.setTerminalTitle(`OT | ${title}`)
-    }
+    renderer.setTerminalTitle("OpenTerminal")
   })
 
   const args = useArgs()
@@ -660,7 +643,7 @@ function App() {
         setTerminalTitleEnabled((prev) => {
           const next = !prev
           kv.set("terminal_title_enabled", next)
-          if (!next) renderer.setTerminalTitle("")
+          renderer.setTerminalTitle("OpenTerminal")
           return next
         })
         dialog.clear()
