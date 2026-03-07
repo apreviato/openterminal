@@ -76,30 +76,20 @@ class CronjobLogger {
         if (!s || s.status === "pending") continue
 
         const inputRaw = JSON.stringify(s.input ?? {})
-        const inputSummary =
-          inputRaw.length > 200 ? inputRaw.slice(0, 200) + "…" : inputRaw
+        const inputSummary = inputRaw.length > 200 ? inputRaw.slice(0, 200) + "…" : inputRaw
 
         if (s.status === "completed") {
           const outputRaw: string = typeof s.output === "string" ? s.output : ""
           const outputSummary =
-            outputRaw.length > 400
-              ? outputRaw.trim().slice(0, 400) + "\n  …(truncated)"
-              : outputRaw.trim()
-          const dur = s.time?.end && s.time?.start
-            ? ` (${((s.time.end - s.time.start) / 1000).toFixed(1)}s)`
-            : ""
+            outputRaw.length > 400 ? outputRaw.trim().slice(0, 400) + "\n  …(truncated)" : outputRaw.trim()
+          const dur = s.time?.end && s.time?.start ? ` (${((s.time.end - s.time.start) / 1000).toFixed(1)}s)` : ""
           entries.push(
             `  [tool:${part.tool}]${dur}  ${inputSummary}`,
-            outputSummary
-              ? `    → ${outputSummary.replace(/\n/g, "\n      ")}`
-              : "",
+            outputSummary ? `    → ${outputSummary.replace(/\n/g, "\n      ")}` : "",
           )
         } else if (s.status === "error") {
           const errMsg: string = typeof s.error === "string" ? s.error : JSON.stringify(s.error ?? "")
-          entries.push(
-            `  [tool:${part.tool}]  ERROR  ${inputSummary}`,
-            `    → ${errMsg.slice(0, 300)}`,
-          )
+          entries.push(`  [tool:${part.tool}]  ERROR  ${inputSummary}`, `    → ${errMsg.slice(0, 300)}`)
         }
       }
     }
@@ -142,6 +132,11 @@ const CronjobRunCommand = cmd({
       .option("agent", {
         type: "string",
         describe: "override the agent configured for this cronjob",
+      })
+      .option("allow-inactive", {
+        type: "boolean",
+        default: false,
+        describe: "run even when the cronjob is inactive (testing)",
       }),
   async handler(args) {
     const job = await Cronjob.get(args.name)
@@ -149,7 +144,7 @@ const CronjobRunCommand = cmd({
       UI.error(`Cronjob "${args.name}" not found`)
       process.exit(1)
     }
-    if (!job.active) {
+    if (!job.active && !args.allowInactive) {
       // Silently exit — job is disabled
       process.exit(0)
     }
@@ -201,12 +196,7 @@ const CronjobRunCommand = cmd({
             const props = event.properties
             if (props.sessionID !== sessionID) continue
             let err = String(props.error?.name ?? "Unknown error")
-            if (
-              props.error &&
-              "data" in props.error &&
-              props.error.data &&
-              "message" in (props.error.data as object)
-            ) {
+            if (props.error && "data" in props.error && props.error.data && "message" in (props.error.data as object)) {
               err = String((props.error.data as Record<string, unknown>).message)
             }
             failed = true
@@ -250,9 +240,7 @@ const CronjobRunCommand = cmd({
       })
 
       UI.println(
-        failed
-          ? UI.Style.TEXT_DANGER_BOLD + "✗"
-          : UI.Style.TEXT_INFO_BOLD + "✓",
+        failed ? UI.Style.TEXT_DANGER_BOLD + "✗" : UI.Style.TEXT_INFO_BOLD + "✓",
         UI.Style.TEXT_NORMAL + `Cronjob "${resolvedJob.name}" ${failed ? "failed" : "running"}`,
         UI.Style.TEXT_DIM + `→ ${Cronjob.logPath()}`,
       )
@@ -264,7 +252,6 @@ const CronjobRunCommand = cmd({
       })
 
       await logger.writeFinish(failed)
-
     })
   },
 })
@@ -273,12 +260,12 @@ const CronjobRunCommand = cmd({
 
 const SCHEDULE_PRESETS = [
   { value: "*/15 * * * *", label: "Every 15 minutes", hint: "*/15 * * * *" },
-  { value: "0 * * * *",    label: "Every hour",        hint: "0 * * * *" },
-  { value: "0 9 * * *",    label: "Daily at 9am",      hint: "0 9 * * *" },
-  { value: "0 9 * * 1-5",  label: "Weekdays at 9am",   hint: "0 9 * * 1-5" },
-  { value: "0 9 * * 1",    label: "Every Monday",      hint: "0 9 * * 1" },
-  { value: "0 9 1 * *",    label: "Monthly (1st)",     hint: "0 9 1 * *" },
-  { value: "__custom__",   label: "Custom…",           hint: "Enter a cron expression manually" },
+  { value: "0 * * * *", label: "Every hour", hint: "0 * * * *" },
+  { value: "0 9 * * *", label: "Daily at 9am", hint: "0 9 * * *" },
+  { value: "0 9 * * 1-5", label: "Weekdays at 9am", hint: "0 9 * * 1-5" },
+  { value: "0 9 * * 1", label: "Every Monday", hint: "0 9 * * 1" },
+  { value: "0 9 1 * *", label: "Monthly (1st)", hint: "0 9 1 * *" },
+  { value: "__custom__", label: "Custom…", hint: "Enter a cron expression manually" },
 ]
 
 const CronjobCreateCommand = cmd({
@@ -311,8 +298,7 @@ const CronjobCreateCommand = cmd({
     await Instance.provide({
       directory: process.cwd(),
       async fn() {
-        const isFullyNonInteractive =
-          !!args.name && !!args.cron && args.agent !== undefined && !!args.prompt
+        const isFullyNonInteractive = !!args.name && !!args.cron && args.agent !== undefined && !!args.prompt
 
         if (!isFullyNonInteractive) {
           UI.empty()
@@ -458,22 +444,16 @@ const CronjobListCommand = cmd({
     const jobs = await Cronjob.list()
     if (jobs.length === 0) {
       UI.println(UI.Style.TEXT_DIM + "No cronjobs configured.")
-      UI.println(UI.Style.TEXT_DIM + `Store jobs in ${process.env["XDG_CONFIG_HOME"] ?? "~/.config"}/openterminal/cronjob/<name>.md`)
+      UI.println(
+        UI.Style.TEXT_DIM +
+          `Store jobs in ${process.env["XDG_CONFIG_HOME"] ?? "~/.config"}/openterminal/cronjob/<name>.md`,
+      )
       return
     }
     for (const job of jobs) {
-      const status = job.active
-        ? UI.Style.TEXT_SUCCESS_BOLD + "● "
-        : UI.Style.TEXT_DIM + "○ "
+      const status = job.active ? UI.Style.TEXT_SUCCESS_BOLD + "● " : UI.Style.TEXT_DIM + "○ "
       const agent = job.agent ? UI.Style.TEXT_DIM + ` [${job.agent}]` : ""
-      UI.println(
-        status +
-          UI.Style.TEXT_NORMAL +
-          job.name.padEnd(24) +
-          UI.Style.TEXT_DIM +
-          job.cron.padEnd(16) +
-          agent,
-      )
+      UI.println(status + UI.Style.TEXT_NORMAL + job.name.padEnd(24) + UI.Style.TEXT_DIM + job.cron.padEnd(16) + agent)
     }
     UI.empty()
     UI.println(UI.Style.TEXT_DIM + `${jobs.length} job${jobs.length === 1 ? "" : "s"} total`)
@@ -523,8 +503,7 @@ const CronjobDisableCommand = makeToggleCommand(false)
 const CronjobDeleteCommand = cmd({
   command: "delete <name>",
   describe: "delete a cronjob",
-  builder: (yargs: Argv) =>
-    yargs.positional("name", { type: "string", describe: "cronjob name", demandOption: true }),
+  builder: (yargs: Argv) => yargs.positional("name", { type: "string", describe: "cronjob name", demandOption: true }),
   async handler(args) {
     const job = await Cronjob.get(args.name)
     if (!job) {
@@ -532,10 +511,7 @@ const CronjobDeleteCommand = cmd({
       process.exit(1)
     }
     await Cronjob.remove(args.name)
-    UI.println(
-      UI.Style.TEXT_SUCCESS_BOLD + "✓ ",
-      UI.Style.TEXT_NORMAL + `Cronjob "${args.name}" deleted`,
-    )
+    UI.println(UI.Style.TEXT_SUCCESS_BOLD + "✓ ", UI.Style.TEXT_NORMAL + `Cronjob "${args.name}" deleted`)
   },
 })
 

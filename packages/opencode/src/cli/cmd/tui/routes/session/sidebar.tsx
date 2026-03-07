@@ -42,6 +42,8 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
 
   const cost = createMemo(() => {
     const total = messages().reduce((sum, x) => sum + (x.role === "assistant" ? x.cost : 0), 0)
+    // Don't show cost if it's $0 (e.g., Ollama or free providers)
+    if (total === 0) return null
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
@@ -102,7 +104,9 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
               </text>
               <text fg={theme.textMuted}>{context()?.tokens ?? 0} tokens</text>
               <text fg={theme.textMuted}>{context()?.percentage ?? 0}% used</text>
-              {/* <text fg={theme.textMuted}>{cost()} spent</text> */}
+              <Show when={cost()}>
+                <text fg={theme.textMuted}>{cost()} spent</text>
+              </Show>
             </box>
             <Show when={mcpEntries().length > 0}>
               <box>
@@ -291,9 +295,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                   </text>
                 </box>
                 <text fg={theme.textMuted}>No Ollama models detected.</text>
-                <text fg={theme.textMuted}>
-                  Start Ollama and pull a model to get started.
-                </text>
+                <text fg={theme.textMuted}>Start Ollama and pull a model to get started.</text>
                 <box flexDirection="row" gap={1} justifyContent="space-between">
                   <text fg={theme.text}>ollama pull qwen3:8b</text>
                 </box>
@@ -301,7 +303,9 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
             </box>
           </Show>
           <text>
-            <span style={{ fg: theme.textMuted }}>{directory().replaceAll("\\", "/").split("/").slice(0, -1).join("/")}/</span>
+            <span style={{ fg: theme.textMuted }}>
+              {directory().replaceAll("\\", "/").split("/").slice(0, -1).join("/")}/
+            </span>
             <span style={{ fg: theme.text }}>{directory().replaceAll("\\", "/").split("/").at(-1)}</span>
           </text>
           <text fg={theme.textMuted}>

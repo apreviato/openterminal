@@ -27,6 +27,11 @@ import { SkillTool } from "../../tool/skill"
 import { BashTool } from "../../tool/bash"
 import { TodoWriteTool } from "../../tool/todo"
 import { Locale } from "../../util/locale"
+import { stdinText } from "../../util/compat"
+import { CronjobListTool } from "../../tool/cronjob_list"
+import { CronjobCreateTool } from "../../tool/cronjob_create"
+import { CronjobDeleteTool } from "../../tool/cronjob_delete"
+import { CronjobRunTool } from "../../tool/cronjob_run"
 
 type ToolProps<T extends Tool.Info> = {
   input: Tool.InferParameters<T>
@@ -212,6 +217,38 @@ function todo(info: ToolProps<typeof TodoWriteTool>) {
   )
 }
 
+function cronjobList(info: ToolProps<typeof CronjobListTool>) {
+  inline({
+    icon: "⏱",
+    title: "Cronjob list",
+    description: `${info.metadata.count ?? 0} found`,
+  })
+}
+
+function cronjobCreate(info: ToolProps<typeof CronjobCreateTool>) {
+  inline({
+    icon: "⏱",
+    title: `Cronjob create ${info.metadata.name}`,
+    description: info.metadata.confirmed ? "confirmed" : "cancelled",
+  })
+}
+
+function cronjobDelete(info: ToolProps<typeof CronjobDeleteTool>) {
+  inline({
+    icon: "⏱",
+    title: `Cronjob delete ${info.metadata.name}`,
+    description: info.metadata.confirmed ? "confirmed" : "cancelled",
+  })
+}
+
+function cronjobRun(info: ToolProps<typeof CronjobRunTool>) {
+  inline({
+    icon: "⏱",
+    title: `Cronjob run ${info.metadata.name}`,
+    description: info.metadata.confirmed ? `exit ${info.metadata.exit}` : "cancelled",
+  })
+}
+
 function normalizePath(input?: string) {
   if (!input) return ""
   if (path.isAbsolute(input)) return path.relative(process.cwd(), input) || "."
@@ -337,7 +374,7 @@ export const RunCommand = cmd({
       }
     }
 
-    if (!process.stdin.isTTY) message += "\n" + (await Bun.stdin.text())
+    if (!process.stdin.isTTY) message += "\n" + (await stdinText())
 
     if (message.trim().length === 0 && !args.command) {
       UI.error("You must provide a message or a command")
@@ -419,6 +456,10 @@ export const RunCommand = cmd({
           if (part.tool === "task") return task(props<typeof TaskTool>(part))
           if (part.tool === "todowrite") return todo(props<typeof TodoWriteTool>(part))
           if (part.tool === "skill") return skill(props<typeof SkillTool>(part))
+          if (part.tool === "cronjob_list") return cronjobList(props<typeof CronjobListTool>(part))
+          if (part.tool === "cronjob_create") return cronjobCreate(props<typeof CronjobCreateTool>(part))
+          if (part.tool === "cronjob_delete") return cronjobDelete(props<typeof CronjobDeleteTool>(part))
+          if (part.tool === "cronjob_run") return cronjobRun(props<typeof CronjobRunTool>(part))
           return fallback(part)
         } catch {
           return fallback(part)

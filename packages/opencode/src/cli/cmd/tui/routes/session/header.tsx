@@ -18,12 +18,13 @@ const Title = (props: { session: Accessor<Session> }) => {
   )
 }
 
-const ContextInfo = (props: { context: Accessor<string | undefined>; cost: Accessor<string> }) => {
+const ContextInfo = (props: { context: Accessor<string | undefined>; cost: Accessor<string | null> }) => {
   const { theme } = useTheme()
   return (
     <Show when={props.context()}>
       <text fg={theme.textMuted} wrapMode="none" flexShrink={0}>
-        {props.context()} ({props.cost()})
+        {props.context()}
+        {props.cost() ? ` (${props.cost()})` : ""}
       </text>
     </Show>
   )
@@ -40,6 +41,8 @@ export function Header() {
       messages(),
       sumBy((x) => (x.role === "assistant" ? x.cost : 0)),
     )
+    // Don't show cost if it's $0 (e.g., Ollama or free providers)
+    if (total === 0) return null
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",

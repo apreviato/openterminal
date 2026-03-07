@@ -12,6 +12,7 @@ import { text } from "node:stream/consumers"
 
 import { ZipReader, BlobReader, BlobWriter } from "@zip.js/zip.js"
 import { Log } from "@/util/log"
+import { which } from "@/util/compat"
 
 export namespace Ripgrep {
   const log = Log.create({ service: "ripgrep" })
@@ -126,11 +127,11 @@ export namespace Ripgrep {
   )
 
   const state = lazy(async () => {
-    const system = Bun.which("rg")
+    const system = which("rg")
     if (system) {
       const stat = await fs.stat(system).catch(() => undefined)
       if (stat?.isFile()) return { filepath: system }
-      log.warn("bun.which returned invalid rg path", { filepath: system })
+      log.warn("which returned invalid rg path", { filepath: system })
     }
     const filepath = path.join(Global.Path.bin, "rg" + (process.platform === "win32" ? ".exe" : ""))
 

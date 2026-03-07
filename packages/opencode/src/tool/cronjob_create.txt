@@ -1,0 +1,16 @@
+Creates a cronjob in openterminal's built-in scheduler.
+
+IMPORTANT: This tool always asks the user for confirmation before creating a job.
+
+Inputs:
+- `name`: job name (lowercase letters, numbers, hyphens)
+- `cron`: cron expression (5 fields)
+- `prompt`: task prompt executed on each run
+- `agent` (optional): agent name (empty/default allowed)
+- `active` (optional): whether to create enabled (default: true)
+
+Behavior:
+- Validates the name format
+- Checks for duplicate names
+- Asks for confirmation with a summary of the job
+- Creates and stores the cronjob and syncs OS scheduler entries when active

@@ -35,6 +35,7 @@ import { iife } from "@/util/iife"
 import { Control } from "@/control"
 import { ConfigPaths } from "./paths"
 import { Filesystem } from "@/util/filesystem"
+import { write } from "@/util/compat"
 
 export namespace Config {
   const ModelId = z.string().meta({ $ref: "https://models.dev/model-schema.json#/$defs/Model" })
@@ -631,6 +632,10 @@ export namespace Config {
           webfetch: PermissionAction.optional(),
           websearch: PermissionAction.optional(),
           codesearch: PermissionAction.optional(),
+          cronjob_list: PermissionAction.optional(),
+          cronjob_create: PermissionAction.optional(),
+          cronjob_delete: PermissionAction.optional(),
+          cronjob_run: PermissionAction.optional(),
           lsp: PermissionRule.optional(),
           doom_loop: PermissionAction.optional(),
           skill: PermissionRule.optional(),
@@ -1151,7 +1156,7 @@ export namespace Config {
             .optional()
             .describe(
               "Fraction of the usable context window at which compaction is triggered (default: 0.9 = 90%). " +
-              "Lower values compact earlier, leaving more headroom. Raise towards 1.0 to delay compaction.",
+                "Lower values compact earlier, leaving more headroom. Raise towards 1.0 to delay compaction.",
             ),
           prune_minimum: z
             .number()
@@ -1260,7 +1265,7 @@ export namespace Config {
       if (!parsed.data.$schema && isFile) {
         parsed.data.$schema = "https://opencode.ai/config.json"
         const updated = original.replace(/^\s*\{/, '{\n  "$schema": "https://opencode.ai/config.json",')
-        await Bun.write(options.path, updated).catch(() => {})
+        await write(options.path, updated).catch(() => {})
       }
       const data = parsed.data
       if (data.plugin && isFile) {

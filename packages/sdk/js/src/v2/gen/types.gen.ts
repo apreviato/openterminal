@@ -1014,7 +1014,7 @@ export type GlobalEvent = {
 export type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR"
 
 /**
- * Server configuration for opencode serve and web commands
+ * Server configuration for openterminal serve and web commands
  */
 export type ServerConfig = {
   /**
@@ -1030,7 +1030,7 @@ export type ServerConfig = {
    */
   mdns?: boolean
   /**
-   * Custom domain name for mDNS service (default: opencode.local)
+   * Custom domain name for mDNS service (default: openterminal.local)
    */
   mdnsDomain?: string
   /**
@@ -1472,6 +1472,18 @@ export type Config = {
      * Token buffer for compaction. Leaves enough window to avoid overflow during compaction.
      */
     reserved?: number
+    /**
+     * Fraction of the usable context window at which compaction is triggered (default: 0.9 = 90%). Lower values compact earlier, leaving more headroom. Raise towards 1.0 to delay compaction.
+     */
+    threshold?: number
+    /**
+     * Minimum tokens that must be prunable before a prune pass runs (default: 20000).
+     */
+    prune_minimum?: number
+    /**
+     * Tokens of recent tool output to keep when pruning (default: 40000).
+     */
+    prune_protect?: number
   }
   experimental?: {
     disable_paste_summary?: boolean

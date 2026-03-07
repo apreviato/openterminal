@@ -37,10 +37,6 @@ Thumbs.db
 *.swo
 .claude/
 
-# SST / Pulumi
-.sst/
-.pulumi/
-
 # Test output
 coverage/
 .nyc_output/

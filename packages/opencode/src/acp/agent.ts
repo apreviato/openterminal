@@ -27,6 +27,7 @@ import {
   type ToolKind,
   type Usage,
 } from "@agentclientprotocol/sdk"
+import { hash } from "../util/compat.js"
 
 import { Log } from "../util/log"
 import { pathToFileURL } from "bun"
@@ -281,9 +282,9 @@ export namespace ACP {
                 const output = this.bashOutput(part)
                 const content: ToolCallContent[] = []
                 if (output) {
-                  const hash = String(Bun.hash(output))
+                  const hashValue = hash(output)
                   if (part.tool === "bash") {
-                    if (this.bashSnapshots.get(part.callID) === hash) {
+                    if (this.bashSnapshots.get(part.callID) === hashValue) {
                       await this.connection
                         .sessionUpdate({
                           sessionId,
@@ -302,7 +303,7 @@ export namespace ACP {
                         })
                       return
                     }
-                    this.bashSnapshots.set(part.callID, hash)
+                    this.bashSnapshots.set(part.callID, hashValue)
                   }
                   content.push({
                     type: "content",

@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import { SessionRoutes } from "../../server/routes/session"
 import { WorkspaceServerRoutes } from "./routes"
+import { serve } from "@/util/compat"
 
 export namespace WorkspaceServer {
   export function App() {
@@ -15,7 +16,7 @@ export namespace WorkspaceServer {
   }
 
   export function Listen(opts: { hostname: string; port: number }) {
-    return Bun.serve({
+    return serve({
       hostname: opts.hostname,
       port: opts.port,
       fetch: App().fetch,

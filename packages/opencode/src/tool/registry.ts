@@ -26,6 +26,10 @@ import { Flag } from "@/flag/flag"
 import { Log } from "@/util/log"
 import { LspTool } from "./lsp"
 import { Truncate } from "./truncation"
+import { CronjobListTool } from "./cronjob_list"
+import { CronjobCreateTool } from "./cronjob_create"
+import { CronjobDeleteTool } from "./cronjob_delete"
+import { CronjobRunTool } from "./cronjob_run"
 
 import { ApplyPatchTool } from "./apply_patch"
 import { Glob } from "../util/glob"
@@ -117,6 +121,10 @@ export namespace ToolRegistry {
       CodeSearchTool,
       SkillTool,
       ApplyPatchTool,
+      CronjobListTool,
+      CronjobCreateTool,
+      CronjobDeleteTool,
+      CronjobRunTool,
       ...(Flag.OPENCODE_EXPERIMENTAL_LSP_TOOL ? [LspTool] : []),
       ...(config.experimental?.batch_tool === true ? [BatchTool] : []),
       ...(Flag.OPENCODE_EXPERIMENTAL_PLAN_MODE && Flag.OPENCODE_CLIENT === "cli" ? [PlanExitTool] : []),

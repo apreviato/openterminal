@@ -1,0 +1,11 @@
+Lists configured cronjobs from openterminal's built-in scheduler.
+
+This tool is read-only, but it still requires explicit user confirmation before execution.
+
+Behavior:
+- Prompts the user to confirm listing cronjobs
+- Returns all jobs sorted by name with schedule, status, and agent
+
+Output format:
+- One line per cronjob: `name | cron | active|inactive | agent`
+- If no jobs exist, returns a clear empty-state message

@@ -12,9 +12,21 @@ import { Instance } from "../project/instance"
 import { Flag } from "../flag/flag"
 import { Archive } from "../util/archive"
 import { Process } from "../util/process"
+import { which } from "@/util/compat"
 
 export namespace LSPServer {
   const log = Log.create({ service: "lsp.server" })
+  const Bun = {
+    which,
+    resolve(specifier: string, parent: string) {
+      if (globalThis.Bun?.resolve) return globalThis.Bun.resolve(specifier, parent)
+      if (typeof import.meta.resolve === "function") {
+        return Promise.resolve(import.meta.resolve(specifier, parent))
+      }
+      return Promise.reject(new Error("Module resolver unavailable"))
+    },
+  }
+
   const pathExists = async (p: string) =>
     fs
       .stat(p)

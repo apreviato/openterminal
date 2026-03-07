@@ -1,0 +1,15 @@
+Executes a configured cronjob immediately for testing.
+
+IMPORTANT: This tool always asks the user for confirmation before execution.
+
+Inputs:
+- `name`: cronjob name
+- `agent` (optional): override configured agent for this test run
+- `allow_inactive` (optional, default true): if true, allows testing even when job is inactive
+- `timeout_ms` (optional): maximum wait time for the spawned CLI process
+
+Behavior:
+- Verifies the cronjob exists
+- Asks for confirmation with job details
+- Runs `openterminal cronjob run <name>` (with optional agent override)
+- Returns CLI stdout/stderr and exit code

@@ -1,4 +1,5 @@
 import { Auth } from "../../auth"
+import { sleep } from "../../util/compat.js"
 import { cmd } from "./cmd"
 import * as prompts from "@clack/prompts"
 import { UI } from "../ui"
@@ -38,7 +39,7 @@ async function handlePluginAuth(plugin: { auth: PluginAuth }, provider: string):
   const method = plugin.auth.methods[index]
 
   // Handle prompts for all auth types
-  await Bun.sleep(10)
+  await sleep(10)
   const inputs: Record<string, string> = {}
   if (method.prompts) {
     for (const prompt of method.prompts) {

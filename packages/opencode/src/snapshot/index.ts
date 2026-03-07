@@ -8,6 +8,7 @@ import z from "zod"
 import { Config } from "../config/config"
 import { Instance } from "../project/instance"
 import { Scheduler } from "../scheduler"
+import { write } from "../util/compat"
 
 export namespace Snapshot {
   const log = Log.create({ service: "snapshot" })
@@ -271,13 +272,13 @@ export namespace Snapshot {
     const target = path.join(git, "info", "exclude")
     await fs.mkdir(path.join(git, "info"), { recursive: true })
     if (!file) {
-      await Bun.write(target, "")
+      await write(target, "")
       return
     }
     const text = await Bun.file(file)
       .text()
       .catch(() => "")
-    await Bun.write(target, text)
+    await write(target, text)
   }
 
   async function excludes() {

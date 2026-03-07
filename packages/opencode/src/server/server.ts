@@ -38,6 +38,7 @@ import { websocket } from "hono/bun"
 import { HTTPException } from "hono/http-exception"
 import { errors } from "./error"
 import { QuestionRoutes } from "./routes/question"
+import { serve } from "@/util/compat"
 import { PermissionRoutes } from "./routes/permission"
 import { GlobalRoutes } from "./routes/global"
 import { MDNS } from "./mdns"
@@ -606,7 +607,7 @@ export namespace Server {
     } as const
     const tryServe = (port: number) => {
       try {
-        return Bun.serve({ ...args, port })
+        return serve({ ...args, port })
       } catch {
         return undefined
       }

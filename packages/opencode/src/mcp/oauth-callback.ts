@@ -1,5 +1,6 @@
 import { Log } from "../util/log"
 import { OAUTH_CALLBACK_PORT, OAUTH_CALLBACK_PATH } from "./oauth-provider"
+import { serve } from "@/util/compat"
 
 const log = Log.create({ service: "mcp.oauth-callback" })
 
@@ -51,7 +52,7 @@ interface PendingAuth {
 }
 
 export namespace McpOAuthCallback {
-  let server: ReturnType<typeof Bun.serve> | undefined
+  let server: ReturnType<typeof serve> | undefined
   const pendingAuths = new Map<string, PendingAuth>()
 
   const CALLBACK_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
@@ -65,7 +66,7 @@ export namespace McpOAuthCallback {
       return
     }
 
-    server = Bun.serve({
+    server = serve({
       port: OAUTH_CALLBACK_PORT,
       fetch(req) {
         const url = new URL(req.url)

@@ -2,6 +2,7 @@ import z from "zod"
 import { EOL } from "os"
 import { NamedError } from "@opencode-ai/util/error"
 import { logo as glyphs } from "./logo"
+import { color, stderrWrite } from "@/util/compat"
 
 export namespace UI {
   export const CancelledError = NamedError.create("UICancelledError", z.void())
@@ -25,12 +26,12 @@ export namespace UI {
 
   export function println(...message: string[]) {
     print(...message)
-    Bun.stderr.write(EOL)
+    stderrWrite(EOL)
   }
 
   export function print(...message: string[]) {
     blank = false
-    Bun.stderr.write(message.join(" "))
+    stderrWrite(message.join(" "))
   }
 
   let blank = false
@@ -45,7 +46,7 @@ export namespace UI {
     const reset = "\x1b[0m"
 
     const left = {
-      fg: Bun.color("gray", "ansi") ?? "",
+      fg: color("gray", "ansi") ?? "",
       shadow: "\x1b[38;5;235m",
       bg: "\x1b[48;5;235m",
     }

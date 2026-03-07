@@ -1,0 +1,8 @@
+Deletes a cronjob from openterminal's built-in scheduler.
+
+IMPORTANT: This tool always asks the user for confirmation before deleting a job.
+
+Behavior:
+- Verifies the cronjob exists
+- Asks for confirmation with job details
+- Removes the cronjob file and unregisters it from the OS scheduler

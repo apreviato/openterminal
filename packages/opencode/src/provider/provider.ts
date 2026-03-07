@@ -16,6 +16,7 @@ import { iife } from "@/util/iife"
 import { Global } from "../global"
 import path from "path"
 import { Filesystem } from "../util/filesystem"
+import { xxHash32 } from "../util/compat.js"
 
 // Only Ollama / local OpenAI-compatible providers are supported
 import { createOpenAICompatible, type LanguageModelV2 } from "@ai-sdk/openai-compatible"
@@ -42,7 +43,10 @@ export namespace Provider {
   type CustomModelLoader = (sdk: any, modelID: string, options?: Record<string, any>) => Promise<any>
 
   // No external custom loaders — only local OpenAI-compatible (Ollama) providers are used
-  const CUSTOM_LOADERS: Record<string, (provider: Info) => Promise<{ autoload: boolean; getModel?: CustomModelLoader; options?: Record<string, any> }>> = {}
+  const CUSTOM_LOADERS: Record<
+    string,
+    (provider: Info) => Promise<{ autoload: boolean; getModel?: CustomModelLoader; options?: Record<string, any> }>
+  > = {}
 
   // --- Ollama local model detection ---
 
@@ -78,7 +82,7 @@ export namespace Provider {
         reasoning: false,
         attachment: false,
         toolcall: true,
-        input:  { text: true, audio: false, image: false, video: false, pdf: false },
+        input: { text: true, audio: false, image: false, video: false, pdf: false },
         output: { text: true, audio: false, image: false, video: false, pdf: false },
         interleaved: false,
       },
@@ -545,7 +549,7 @@ export namespace Provider {
           ...model.headers,
         }
 
-      const key = Bun.hash.xxHash32(JSON.stringify({ providerID: model.providerID, npm: model.api.npm, options }))
+      const key = xxHash32(JSON.stringify({ providerID: model.providerID, npm: model.api.npm, options }))
       const existing = s.sdk.get(key)
       if (existing) return existing
 
