@@ -2,16 +2,18 @@
 
 [![Based on opencode](https://img.shields.io/badge/based%20on-opencode-blue?style=flat-square)](https://github.com/sst/opencode)
 [![Runtime: Bun](https://img.shields.io/badge/runtime-bun-f9f1e1?style=flat-square&logo=bun)](https://bun.sh)
-[![Local only](https://img.shields.io/badge/provider-Ollama%20only-green?style=flat-square)](https://ollama.com)
+[![Ollama focused](https://img.shields.io/badge/optimized%20for-Ollama-green?style=flat-square)](https://ollama.com)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square)](./LICENSE)
 
-A local-only fork of [opencode](https://github.com/sst/opencode) — stripped of all cloud providers, configured exclusively for [Ollama](https://ollama.com).
+A local-first fork of [opencode](https://github.com/sst/opencode) — optimized for [Ollama](https://ollama.com), but fully compatible with external providers (Anthropic, OpenAI, Google, etc.).
 
 ---
 
 ## Inherited from opencode
 
 openterminal is a direct fork of [opencode](https://github.com/sst/opencode). The core engine, configuration system, agents, skills, MCP servers, permissions, LSP, and worktree support all work **exactly the same way**. The [official opencode documentation](https://opencode.ai/docs) applies in full — just substitute directory names from `opencode` to `openterminal` where applicable (see [Path differences](#path-differences) below).
+
+**All AI providers are fully supported** — Anthropic, OpenAI, Google, Ollama, and any other provider compatible with the [Vercel AI SDK](https://sdk.vercel.ai/providers/ai-sdk-providers). OpenTerminal is simply optimized for local-first workflows with Ollama.
 
 ---
 
@@ -49,12 +51,12 @@ The config file is still named `opencode.json` (or `opencode.jsonc`) — same as
 
 When following the [opencode docs](https://opencode.ai/docs/config), replace directory names as follows:
 
-| Purpose | opencode | openterminal |
-|---|---|---|
-| Global config dir | `~/.config/opencode/` | `~/.config/openterminal/` |
-| Per-project config dir | `.opencode/` | `.openterminal/` |
-| Data / database | `~/.local/share/opencode/` | `~/.local/share/openterminal/` |
-| Windows config | `%APPDATA%\opencode\` | `%APPDATA%\openterminal\` |
+| Purpose                | opencode                   | openterminal                   |
+| ---------------------- | -------------------------- | ------------------------------ |
+| Global config dir      | `~/.config/opencode/`      | `~/.config/openterminal/`      |
+| Per-project config dir | `.opencode/`               | `.openterminal/`               |
+| Data / database        | `~/.local/share/opencode/` | `~/.local/share/openterminal/` |
+| Windows config         | `%APPDATA%\opencode\`      | `%APPDATA%\openterminal\`      |
 
 The config file name (`opencode.json`) stays the same inside those directories.
 
@@ -69,13 +71,39 @@ The config file name (`opencode.json`) stays the same inside those directories.
       "npm": "@ai-sdk/openai-compatible",
       "name": "Ollama",
       "options": {
-        "baseURL": "http://localhost:11434/v1"
-      }
-    }
+        "baseURL": "http://localhost:11434/v1",
+      },
+    },
   },
-  "model": "ollama/llama3.1:8b"
+  "model": "ollama/llama3.1:8b",
 }
 ```
+
+### Example: using external providers (Anthropic, OpenAI, etc.)
+
+OpenTerminal is **fully compatible** with all AI providers supported by opencode. Simply configure them in your `opencode.json`:
+
+```jsonc
+// ~/.config/openterminal/opencode.json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "anthropic": {
+      "npm": "@ai-sdk/anthropic",
+      "name": "Anthropic",
+      "apiKey": "sk-ant-...",
+    },
+    "openai": {
+      "npm": "@ai-sdk/openai",
+      "name": "OpenAI",
+      "apiKey": "sk-...",
+    },
+  },
+  "model": "anthropic/claude-sonnet-4",
+}
+```
+
+Reference: [opencode.ai/docs/config](https://opencode.ai/docs/config)
 
 ---
 
@@ -115,12 +143,12 @@ The same layout works in the global config directory:
   "description": "Focused on code review",
   "model": {
     "providerID": "ollama",
-    "modelID": "llama3.1:8b"
+    "modelID": "llama3.1:8b",
   },
   "permission": {
     "bash": "ask",
-    "write_file": "allow"
-  }
+    "write_file": "allow",
+  },
 }
 ```
 
@@ -153,9 +181,9 @@ MCP server configuration is identical to opencode. Add servers under the `mcp` k
     "filesystem": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
-    }
-  }
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+    },
+  },
 }
 ```
 
@@ -183,13 +211,13 @@ c create   t toggle   d delete   ↑↓ navigate   esc back
 
 **Keybinds:**
 
-| Key | Action |
-|-----|--------|
-| `c` | Create a new cronjob (guided wizard) |
-| `t` | Toggle active/inactive for selected job |
-| `d` | Delete selected job |
-| `↑` / `↓` | Navigate the list |
-| `Esc` | Return to home |
+| Key       | Action                                  |
+| --------- | --------------------------------------- |
+| `c`       | Create a new cronjob (guided wizard)    |
+| `t`       | Toggle active/inactive for selected job |
+| `d`       | Delete selected job                     |
+| `↑` / `↓` | Navigate the list                       |
+| `Esc`     | Return to home                          |
 
 The creation wizard walks you through: **name → schedule → agent → prompt**.
 
@@ -258,6 +286,7 @@ Every run writes a structured entry to `~/.config/openterminal/cronjob/logs.txt`
 ```
 
 The log path is printed after each run. Errors are flagged inline and also appear in the footer:
+
 ```
 [2024-01-15 09:00:02]  ERROR  model not found
 [2024-01-15 09:00:02]  FAIL   daily-standup  (0.8s)
@@ -274,13 +303,13 @@ When disabled or deleted, the OS entry is removed. The binary called by the sche
 
 **Supported cron patterns on Windows** (Task Scheduler has a limited expression set):
 
-| Pattern | Meaning |
-|---------|---------|
-| `* * * * *` | Every minute |
-| `*/N * * * *` | Every N minutes |
-| `M H * * *` | Daily at HH:MM |
-| `M H * * D` | Weekly on day D at HH:MM |
-| `M H D * *` | Monthly on day D at HH:MM |
+| Pattern       | Meaning                   |
+| ------------- | ------------------------- |
+| `* * * * *`   | Every minute              |
+| `*/N * * * *` | Every N minutes           |
+| `M H * * *`   | Daily at HH:MM            |
+| `M H * * D`   | Weekly on day D at HH:MM  |
+| `M H D * *`   | Monthly on day D at HH:MM |
 
 Complex expressions (ranges, lists, step values beyond `*/N`) are not supported on Windows — use a simpler preset or configure `schtasks` manually.
 
@@ -288,32 +317,119 @@ Complex expressions (ranges, lists, step values beyond `*/N`) are not supported 
 
 ## Differences from upstream opencode
 
-| Aspect | opencode | openterminal |
-|---|---|---|
-| AI providers | Anthropic, OpenAI, Google, etc. | `@ai-sdk/openai-compatible` only (Ollama) |
-| Model discovery | Fetches from models.dev | Disabled — configure models locally |
-| Installation | npm / brew / curl installer | Local scripts (`install` / `install.ps1`) |
-| Upgrade command | Built-in auto-upgrade | Disabled — use `git pull` |
-| Web / PR / GitHub commands | Available | Removed |
-| Data directory | `~/.local/share/opencode/` | `~/.local/share/openterminal/` |
-| Config directory | `~/.config/opencode/` | `~/.config/openterminal/` |
-| Project config dir | `.opencode/` | `.openterminal/` |
-| Database | `opencode.db` | `openterminal.db` |
-| Internal RPC hostname | `opencode.internal` | `openterminal.internal` |
-| Cronjobs | Not available | Built-in (`/cronjobs`, `openterminal cronjob`) |
+| Aspect                     | opencode                        | openterminal                                                            |
+| -------------------------- | ------------------------------- | ----------------------------------------------------------------------- |
+| AI providers               | Anthropic, OpenAI, Google, etc. | **All providers supported** — optimized for Ollama                      |
+| Model discovery            | Fetches from models.dev         | Disabled — configure models manually in `opencode.json`                 |
+| Installation               | npm / brew / curl installer     | Local scripts (`install` / `install.ps1`)                               |
+| Upgrade command            | Built-in auto-upgrade           | Disabled — use `git pull`                                               |
+| Web / PR / GitHub commands | Available                       | Removed                                                                 |
+| Data directory             | `~/.local/share/opencode/`      | `~/.local/share/openterminal/`                                          |
+| Config directory           | `~/.config/opencode/`           | `~/.config/openterminal/`                                               |
+| Project config dir         | `.opencode/`                    | `.openterminal/`                                                        |
+| Database                   | `opencode.db`                   | `openterminal.db`                                                       |
+| Internal RPC hostname      | `opencode.internal`             | `openterminal.internal`                                                 |
+| Cronjobs                   | Not available                   | Built-in (`/cronjobs`, `openterminal cronjob`)                          |
+| Markdown tables in TUI     | May have alignment issues       | Fixed with @opentui v0.1.86 + `drawUnstyledText=true`                   |
+| Bun-specific APIs          | Used extensively                | Partially migrated to Node.js equivalents for portability               |
+| Build tooling              | Turborepo, npm scripts          | Native Bun scripts (`scripts/build-all.ts`, `scripts/typecheck-all.ts`) |
+| Cloud dependencies         | SST, Pulumi, Nix                | Removed — local-only focus                                              |
 
 Everything else — TUI, LSP, MCP, agents, skills, permissions, worktrees, session history — works identically to opencode.
+
+---
+
+## Recent improvements
+
+### Markdown table rendering (fixed)
+
+Early versions had alignment issues with markdown tables in the TUI. This has been resolved by:
+
+- Upgrading `@opentui` from v0.1.81 → v0.1.86
+- Setting `drawUnstyledText={true}` in the markdown renderer
+
+Tables now render with proper column alignment. See [TABELAS-TUI.md](./TABELAS-TUI.md) for technical details.
+
+### Node.js API migration (in progress)
+
+OpenTerminal is gradually migrating from Bun-specific APIs to Node.js equivalents for better portability:
+
+**Completed:**
+
+- `Bun.sleep()` → `setTimeout` (timers/promises)
+- `Bun.hash()` → `crypto.createHash()`
+- `Bun.hash.xxHash32()` → `crypto.createHash('md5')`
+
+**Remaining:** `Bun.stdin.text()`, `Bun.which()`, `Bun.write()`, `Bun.stderr.write()`, `Bun.stringWidth()`, `Bun.serve()`
+
+See [util/compat.ts](./packages/opencode/src/util/compat.ts) for compatibility shims.
+
+### Build tooling
+
+Replaced Turborepo with native Bun scripts:
+
+- `bun run typecheck` — type-check all packages
+- `bun run build` — build all packages
+
+Scripts are located in `scripts/typecheck-all.ts` and `scripts/build-all.ts`.
+
+### Upstream sync
+
+OpenTerminal tracks upstream opencode releases. See [UPSTREAM-CHANGES.md](./UPSTREAM-CHANGES.md) for a detailed analysis of changes from v1.2.16 → v1.2.20.
 
 ---
 
 ## Development
 
 ```bash
+# Run from source
 bun run dev         # start the TUI directly from source
+
+# Build & typecheck
+bun run build       # build all packages (scripts/build-all.ts)
+bun run typecheck   # type-check all packages (scripts/typecheck-all.ts)
+
+# Database
 bun db              # drizzle-kit studio (inspect DB)
 ```
 
 The database is stored at `~/.local/share/openterminal/openterminal.db`.
+
+### Project structure
+
+```
+openterminal/
+├── packages/
+│   ├── opencode/       # Main CLI (TUI, tools, session management)
+│   ├── sdk/js/         # JavaScript SDK
+│   ├── plugin/         # Plugin system
+│   ├── util/           # Shared utilities
+│   └── script/         # Build scripts
+├── scripts/            # Development scripts
+│   ├── typecheck-all.ts
+│   └── build-all.ts
+└── patches/            # npm patches (applied via pnpm)
+```
+
+---
+
+## Contributing
+
+When contributing to OpenTerminal, please ensure:
+
+1. **Provider compatibility is maintained** — all AI providers (Anthropic, OpenAI, Google, Ollama, etc.) must continue to work
+2. **Opencode documentation remains valid** — configuration format and behavior should match upstream where possible
+3. **Local-first focus** — prioritize features that work offline or with local models
+4. **No breaking changes** — existing configurations and workflows should continue to work
+
+### Syncing with upstream
+
+OpenTerminal periodically syncs improvements from upstream opencode. When merging upstream changes:
+
+- Preserve local-only features (cronjobs, custom scripts)
+- Skip desktop/web/SDK changes (not used in OpenTerminal)
+- Test with both Ollama and external providers (Anthropic, OpenAI)
+- Update [UPSTREAM-CHANGES.md](./UPSTREAM-CHANGES.md) with analysis
 
 ---
 
