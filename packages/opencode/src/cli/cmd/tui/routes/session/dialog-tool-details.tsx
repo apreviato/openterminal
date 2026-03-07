@@ -1,11 +1,16 @@
-import { Show, createMemo } from "solid-js"
-import { Dialog } from "@tui/ui/dialog"
+import { Show, createMemo, onMount } from "solid-js"
 import { useTheme } from "@tui/context/theme"
 import type { ToolPart } from "@opencode-ai/sdk/v2"
 import { formatDuration } from "@/util/format"
+import { useDialog } from "@tui/ui/dialog"
 
 export function DialogToolDetails(props: { part: ToolPart; onClose: () => void }) {
   const { theme } = useTheme()
+  const dialog = useDialog()
+
+  onMount(() => {
+    dialog.setSize("large")
+  })
 
   const toolName = createMemo(() => props.part.tool)
   const status = createMemo(() => props.part.state.status)
@@ -68,88 +73,91 @@ export function DialogToolDetails(props: { part: ToolPart; onClose: () => void }
   })
 
   return (
-    <Dialog size="large" onClose={props.onClose}>
-      <box gap={1} paddingLeft={2} paddingRight={2} paddingBottom={2}>
-        {/* Header */}
+    <box gap={1} paddingLeft={2} paddingRight={2} paddingBottom={2}>
+      {/* Header */}
+      <box flexDirection="row" justifyContent="space-between">
         <text fg={theme.text} attributes={1}>
           Tool Execution Details
         </text>
-
-        {/* Tool Name */}
-        <box gap={0}>
-          <text fg={theme.textMuted}>Tool:</text>
-          <text fg={theme.text} paddingLeft={1}>
-            {toolName()}
-          </text>
-        </box>
-
-        {/* Status */}
-        <box gap={0}>
-          <text fg={theme.textMuted}>Status:</text>
-          <text fg={statusColor()} paddingLeft={1}>
-            {statusText()}
-          </text>
-        </box>
-
-        {/* Duration */}
-        <Show when={duration()}>
-          <box gap={0}>
-            <text fg={theme.textMuted}>Duration:</text>
-            <text fg={theme.text} paddingLeft={1}>
-              {formatDuration(duration()!)}
-            </text>
-          </box>
-        </Show>
-
-        {/* Call ID */}
-        <Show when={props.part.callID}>
-          <box gap={0}>
-            <text fg={theme.textMuted}>Call ID:</text>
-            <text fg={theme.text} paddingLeft={1}>
-              {props.part.callID}
-            </text>
-          </box>
-        </Show>
-
-        {/* Input Parameters */}
-        <box gap={1} marginTop={1}>
-          <text fg={theme.text} attributes={1}>
-            Input Parameters
-          </text>
-          <scroll-box maxHeight={10} backgroundColor={theme.background} paddingLeft={1} paddingRight={1}>
-            <text fg={theme.text}>{inputJson()}</text>
-          </scroll-box>
-        </box>
-
-        {/* Output */}
-        <Show when={outputJson()}>
-          <box gap={1} marginTop={1}>
-            <text fg={theme.text} attributes={1}>
-              Output
-            </text>
-            <scroll-box maxHeight={10} backgroundColor={theme.background} paddingLeft={1} paddingRight={1}>
-              <text fg={theme.text}>{outputJson()}</text>
-            </scroll-box>
-          </box>
-        </Show>
-
-        {/* Error */}
-        <Show when={error()}>
-          <box gap={1} marginTop={1}>
-            <text fg={theme.error} attributes={1}>
-              Error
-            </text>
-            <scroll-box maxHeight={6} backgroundColor={theme.background} paddingLeft={1} paddingRight={1}>
-              <text fg={theme.error}>{error()}</text>
-            </scroll-box>
-          </box>
-        </Show>
-
-        {/* Footer */}
-        <text fg={theme.textMuted} marginTop={1}>
-          Press Esc to close
+        <text fg={theme.textMuted} onMouseUp={props.onClose}>
+          esc
         </text>
       </box>
-    </Dialog>
+
+      {/* Tool Name */}
+      <box gap={0}>
+        <text fg={theme.textMuted}>Tool:</text>
+        <text fg={theme.text} paddingLeft={1}>
+          {toolName()}
+        </text>
+      </box>
+
+      {/* Status */}
+      <box gap={0}>
+        <text fg={theme.textMuted}>Status:</text>
+        <text fg={statusColor()} paddingLeft={1}>
+          {statusText()}
+        </text>
+      </box>
+
+      {/* Duration */}
+      <Show when={duration()}>
+        <box gap={0}>
+          <text fg={theme.textMuted}>Duration:</text>
+          <text fg={theme.text} paddingLeft={1}>
+            {formatDuration(duration()!)}
+          </text>
+        </box>
+      </Show>
+
+      {/* Call ID */}
+      <Show when={props.part.callID}>
+        <box gap={0}>
+          <text fg={theme.textMuted}>Call ID:</text>
+          <text fg={theme.text} paddingLeft={1}>
+            {props.part.callID}
+          </text>
+        </box>
+      </Show>
+
+      {/* Input Parameters */}
+      <box gap={1} marginTop={1}>
+        <text fg={theme.text} attributes={1}>
+          Input Parameters
+        </text>
+        <box maxHeight={10} backgroundColor={theme.background} paddingLeft={1} paddingRight={1}>
+          <text fg={theme.text}>{inputJson()}</text>
+        </box>
+      </box>
+
+      {/* Output */}
+      <Show when={outputJson()}>
+        <box gap={1} marginTop={1}>
+          <text fg={theme.text} attributes={1}>
+            Output
+          </text>
+          <box maxHeight={10} backgroundColor={theme.background} paddingLeft={1} paddingRight={1}>
+            <text fg={theme.text}>{outputJson()}</text>
+          </box>
+        </box>
+      </Show>
+
+      {/* Error */}
+      <Show when={error()}>
+        <box gap={1} marginTop={1}>
+          <text fg={theme.error} attributes={1}>
+            Error
+          </text>
+          <box maxHeight={6} backgroundColor={theme.background} paddingLeft={1} paddingRight={1}>
+            <text fg={theme.error}>{error()}</text>
+          </box>
+        </box>
+      </Show>
+
+      {/* Footer */}
+      <text fg={theme.textMuted} marginTop={1}>
+        Press Esc to close
+      </text>
+    </box>
   )
 }
