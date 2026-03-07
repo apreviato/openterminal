@@ -32,6 +32,7 @@
         "@modelcontextprotocol/sdk": "1.25.2",
         "@opencode-ai/plugin": "workspace:*",
         "@opencode-ai/script": "workspace:*",
+        "@opencode-ai/sdk": "workspace:*",
         "@opencode-ai/util": "workspace:*",
         "@opentui/core": "0.1.86",
         "@opentui/solid": "0.1.86",
