@@ -1176,10 +1176,10 @@ export namespace Config {
         .object({
           disable_paste_summary: z.boolean().optional(),
           batch_tool: z.boolean().optional().describe("Enable the batch tool"),
-          openTelemetry: z
+          enable_exa_search: z
             .boolean()
             .optional()
-            .describe("Enable OpenTelemetry spans for AI SDK calls (using the 'experimental_telemetry' flag)"),
+            .describe("Enable EXA Search integration for code/web search capabilities"),
           primary_tools: z
             .array(z.string())
             .optional()

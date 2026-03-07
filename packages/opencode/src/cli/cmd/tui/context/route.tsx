@@ -17,7 +17,11 @@ export type CronjobsRoute = {
   type: "cronjobs"
 }
 
-export type Route = HomeRoute | SessionRoute | CronjobsRoute
+export type ConfigRoute = {
+  type: "configurations"
+}
+
+export type Route = HomeRoute | SessionRoute | CronjobsRoute | ConfigRoute
 
 export const { use: useRoute, provider: RouteProvider } = createSimpleContext({
   name: "Route",

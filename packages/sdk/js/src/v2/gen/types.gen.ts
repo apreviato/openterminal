@@ -1491,10 +1491,7 @@ export type Config = {
      * Enable the batch tool
      */
     batch_tool?: boolean
-    /**
-     * Enable OpenTelemetry spans for AI SDK calls (using the 'experimental_telemetry' flag)
-     */
-    openTelemetry?: boolean
+    enable_exa_search?: boolean
     /**
      * Tools that should only be available to primary agents.
      */

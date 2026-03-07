@@ -143,13 +143,14 @@ export namespace ToolRegistry {
     },
     agent?: Agent.Info,
   ) {
+    const config = await Config.get()
     const tools = await all()
     const result = await Promise.all(
       tools
         .filter((t) => {
           // Enable websearch/codesearch via enable flag
           if (t.id === "codesearch" || t.id === "websearch") {
-            return Flag.OPENCODE_ENABLE_EXA
+            return config.experimental?.enable_exa_search === true || Flag.OPENCODE_ENABLE_EXA === true
           }
 
           // use apply tool in same format as codex

@@ -10578,8 +10578,8 @@
                 "description": "Enable the batch tool",
                 "type": "boolean"
               },
-              "openTelemetry": {
-                "description": "Enable OpenTelemetry spans for AI SDK calls (using the 'experimental_telemetry' flag)",
+              "enable_exa_search": {
+                "description": "Enable exa search tool (requires exa to be installed and in PATH)",
                 "type": "boolean"
               },
               "primary_tools": {

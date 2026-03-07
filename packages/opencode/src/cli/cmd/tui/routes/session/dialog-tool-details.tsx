@@ -77,18 +77,10 @@ export function DialogToolDetails(props: { part: ToolPart; onClose: () => void }
       {/* Header */}
       <box flexDirection="row" justifyContent="space-between">
         <text fg={theme.text} attributes={1}>
-          Tool Execution Details
+          Tool Execution Details ({toolName()})
         </text>
         <text fg={theme.textMuted} onMouseUp={props.onClose}>
           esc
-        </text>
-      </box>
-
-      {/* Tool Name */}
-      <box gap={0}>
-        <text fg={theme.textMuted}>Tool:</text>
-        <text fg={theme.text} paddingLeft={1}>
-          {toolName()}
         </text>
       </box>
 
@@ -109,26 +101,6 @@ export function DialogToolDetails(props: { part: ToolPart; onClose: () => void }
           </text>
         </box>
       </Show>
-
-      {/* Call ID */}
-      <Show when={props.part.callID}>
-        <box gap={0}>
-          <text fg={theme.textMuted}>Call ID:</text>
-          <text fg={theme.text} paddingLeft={1}>
-            {props.part.callID}
-          </text>
-        </box>
-      </Show>
-
-      {/* Input Parameters */}
-      <box gap={1} marginTop={1}>
-        <text fg={theme.text} attributes={1}>
-          Input Parameters
-        </text>
-        <box maxHeight={10} backgroundColor={theme.background} paddingLeft={1} paddingRight={1}>
-          <text fg={theme.text}>{inputJson()}</text>
-        </box>
-      </box>
 
       {/* Output */}
       <Show when={outputJson()}>

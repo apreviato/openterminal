@@ -25,6 +25,7 @@ import { ThemeProvider, useTheme } from "@tui/context/theme"
 import { Home } from "@tui/routes/home"
 import { Session } from "@tui/routes/session"
 import { Cronjobs } from "@tui/routes/cronjobs"
+import { Config } from "@tui/routes/config"
 import { PromptHistoryProvider } from "./component/prompt/history"
 import { FrecencyProvider } from "./component/prompt/frecency"
 import { PromptStashProvider } from "./component/prompt/stash"
@@ -580,6 +581,19 @@ function App() {
       category: "System",
     },
     {
+      title: "Manage configuration",
+      value: "config.open",
+      slash: {
+        name: "configurations",
+        aliases: ["settings", "preferences"],
+      },
+      onSelect: () => {
+        dialog.clear()
+        route.navigate({ type: "configurations" })
+      },
+      category: "System",
+    },
+    {
       title: "Exit the app",
       value: "app.exit",
       slash: {
@@ -764,6 +778,9 @@ function App() {
         </Match>
         <Match when={route.data.type === "cronjobs"}>
           <Cronjobs />
+        </Match>
+        <Match when={route.data.type === "configurations"}>
+          <Config />
         </Match>
       </Switch>
     </box>
