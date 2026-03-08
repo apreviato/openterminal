@@ -243,6 +243,17 @@ const CronjobRunCommand = cmd({
         }
       }
 
+      // Start event loop BEFORE sending prompt to avoid race condition
+      const loopPromise = loop().catch(async (e) => {
+        const msg = e instanceof Error ? e.message : String(e)
+        console.error(`Cronjob "${resolvedJob.name}" loop error:`, e)
+        await logger.writeError(`loop: ${msg}`)
+        failed = true
+      })
+
+      // Give the event subscription time to establish
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
       UI.println(
         UI.Style.TEXT_INFO_BOLD + "▶",
         UI.Style.TEXT_NORMAL +
@@ -271,12 +282,9 @@ const CronjobRunCommand = cmd({
         UI.Style.TEXT_NORMAL + `Cronjob "${resolvedJob.name}" ${failed ? "failed" : "running"}`,
         UI.Style.TEXT_DIM + `→ ${Cronjob.logPath()}`,
       )
-      await loop().catch(async (e) => {
-        const msg = e instanceof Error ? e.message : String(e)
-        console.error(`Cronjob "${resolvedJob.name}" loop error:`, e)
-        await logger.writeError(`loop: ${msg}`)
-        failed = true
-      })
+
+      // Wait for the event loop to complete
+      await loopPromise
 
       await logger.writeFinish(failed)
     })
