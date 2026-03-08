@@ -60,9 +60,11 @@ WRAPPER="$INSTALL_DIR/$APP"
 
 # Write a wrapper script with the source path baked in at install time.
 # This avoids symlink issues on Windows and is unambiguous.
+BUN_BIN="$(command -v bun)"
+
 cat > "$WRAPPER" <<WRAPPER_CONTENT
 #!/usr/bin/env bash
-exec bun run --cwd "$OPENTERMINAL_ROOT" --conditions=browser ./src/index.ts "\$@"
+exec "$BUN_BIN" run --cwd "$OPENTERMINAL_ROOT" --conditions=browser ./src/index.ts "\$@"
 WRAPPER_CONTENT
 chmod +x "$WRAPPER"
 
