@@ -160,6 +160,14 @@ const CronjobRunCommand = cmd({
       { permission: "question", action: "deny", pattern: "*" },
       { permission: "plan_enter", action: "deny", pattern: "*" },
       { permission: "plan_exit", action: "deny", pattern: "*" },
+      // Allow filesystem operations outside workspace for cronjobs
+      { permission: "edit", action: "allow", pattern: "*" },
+      { permission: "write", action: "allow", pattern: "*" },
+      { permission: "read", action: "allow", pattern: "*" },
+      { permission: "bash", action: "allow", pattern: "*" },
+      { permission: "glob", action: "allow", pattern: "*" },
+      { permission: "grep", action: "allow", pattern: "*" },
+      { permission: "external_directory", action: "allow", pattern: "*" },
       ...(job.permissions ?? []),
     ]
 
