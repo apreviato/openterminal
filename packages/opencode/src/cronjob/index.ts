@@ -171,6 +171,49 @@ export namespace Cronjob {
     return path.join(home, ".openterminal", "bin", "openterminal")
   }
 
+  function shellQuote(value: string): string {
+    return `"${value.replace(/(["\\$`])/g, "\\$1")}"`
+  }
+
+  async function pathExists(file: string): Promise<boolean> {
+    try {
+      await fs.access(file)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async function unixCommandForJob(name: string): Promise<string> {
+    const envBin = process.env["OPENTERMINAL_BIN"]?.trim()
+    if (envBin) {
+      return `${shellQuote(envBin)} cronjob run ${name}`
+    }
+
+    const installedBin = path.join(Global.Path.home, ".openterminal", "bin", "openterminal")
+    if (await pathExists(installedBin)) {
+      return `${shellQuote(installedBin)} cronjob run ${name}`
+    }
+
+    const localBin = path.resolve(import.meta.dir, "../../bin/openterminal")
+    if (await pathExists(localBin)) {
+      return `bash ${shellQuote(localBin)} cronjob run ${name}`
+    }
+
+    if ((process.execPath || "").toLowerCase().includes("bun")) {
+      const localRoot = path.resolve(import.meta.dir, "../..")
+      return `${shellQuote(process.execPath)} run --cwd ${shellQuote(localRoot)} --conditions=browser ./src/index.ts cronjob run ${name}`
+    }
+
+    const script = process.argv[1]
+    if (script) {
+      const scriptPath = path.isAbsolute(script) ? script : path.resolve(process.cwd(), script)
+      return `${shellQuote(process.execPath)} ${shellQuote(scriptPath)} cronjob run ${name}`
+    }
+
+    return `openterminal cronjob run ${name}`
+  }
+
   export async function install(job: Info): Promise<void> {
     if (process.platform === "win32") {
       await installWindows(job)
@@ -207,11 +250,11 @@ export namespace Cronjob {
   }
 
   async function installUnix(job: Info): Promise<void> {
-    const bin = binaryPath()
+    const command = await unixCommandForJob(job.name)
     const existing = await readCrontab()
     // Remove any existing entry for this job
     const cleaned = removeJobFromCrontab(existing, job.name)
-    const entry = `${MARKER}${job.name}\n${job.cron} "${bin}" cronjob run ${job.name}`
+    const entry = `${MARKER}${job.name}\n${job.cron} ${command}`
     const updated = cleaned.trimEnd() + (cleaned.trim() ? "\n" : "") + entry + "\n"
     await writeCrontab(updated)
   }
