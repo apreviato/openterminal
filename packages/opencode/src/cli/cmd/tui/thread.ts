@@ -97,10 +97,13 @@ export const TuiThreadCommand = cmd({
         return
       }
 
-      // OPENTERMINAL_CWD is set by the launcher shim before bun --cwd changes PWD.
-      // Fall back to PWD (also set before --cwd on unix), then process.cwd().
-      const baseCwd = process.env.OPENTERMINAL_CWD ?? process.env.PWD ?? process.cwd()
-      const cwd = args.project ? path.resolve(baseCwd, args.project) : baseCwd
+      // Resolve relative --project paths from the real PWD, then canonicalize
+      // after chdir so the thread and worker share the same directory key.
+      const root = path.resolve(process.env.OPENTERMINAL_CWD ?? process.env.PWD ?? process.cwd())
+      const next = args.project
+        ? path.resolve(path.isAbsolute(args.project) ? args.project : path.join(root, args.project))
+        : path.resolve(process.cwd())
+
       const localWorker = new URL("./worker.ts", import.meta.url)
       const distWorker = new URL("./cli/cmd/tui/worker.js", import.meta.url)
       const workerPath = await iife(async () => {
@@ -109,11 +112,12 @@ export const TuiThreadCommand = cmd({
         return localWorker
       })
       try {
-        process.chdir(cwd)
+        process.chdir(next)
       } catch (e) {
-        UI.error("Failed to change directory to " + cwd)
+        UI.error("Failed to change directory to " + next)
         return
       }
+      const cwd = path.resolve(process.cwd())
 
       const worker = new Worker(workerPath, {
         env: Object.fromEntries(
@@ -124,15 +128,32 @@ export const TuiThreadCommand = cmd({
         Log.Default.error(e)
       }
       const client = Rpc.client<typeof rpc>(worker)
-      process.on("uncaughtException", (e) => {
-        Log.Default.error(e)
-      })
-      process.on("unhandledRejection", (e) => {
-        Log.Default.error(e)
-      })
-      process.on("SIGUSR2", async () => {
-        await client.call("reload", undefined)
-      })
+      const onError = (e: unknown) => Log.Default.error(e)
+      const onReload = () => {
+        client.call("reload", undefined).catch((err) => {
+          Log.Default.warn("worker reload failed", {
+            error: err instanceof Error ? err.message : String(err),
+          })
+        })
+      }
+      process.on("uncaughtException", onError)
+      process.on("unhandledRejection", onError)
+      process.on("SIGUSR2", onReload)
+
+      let stopped = false
+      const stop = async () => {
+        if (stopped) return
+        stopped = true
+        process.off("uncaughtException", onError)
+        process.off("unhandledRejection", onError)
+        process.off("SIGUSR2", onReload)
+        await client.call("shutdown", undefined).catch((err) => {
+          Log.Default.warn("worker shutdown failed", {
+            error: err instanceof Error ? err.message : String(err),
+          })
+        })
+        worker.terminate()
+      }
 
       const prompt = await iife(async () => {
         const piped = !process.stdin.isTTY ? await stdinText() : undefined
@@ -169,30 +190,29 @@ export const TuiThreadCommand = cmd({
         events = createEventSource(client)
       }
 
-      const tuiPromise = tui({
-        url,
-        config,
-        directory: cwd,
-        fetch: customFetch,
-        events,
-        args: {
-          continue: args.continue,
-          sessionID: args.session,
-          agent: args.agent,
-          model: args.model,
-          prompt,
-          fork: args.fork,
-        },
-        onExit: async () => {
-          await client.call("shutdown", undefined)
-        },
-      })
-
       setTimeout(() => {
         client.call("checkUpgrade", { directory: cwd }).catch(() => {})
       }, 1000)
 
-      await tuiPromise
+      try {
+        await tui({
+          url,
+          config,
+          directory: cwd,
+          fetch: customFetch,
+          events,
+          args: {
+            continue: args.continue,
+            sessionID: args.session,
+            agent: args.agent,
+            model: args.model,
+            prompt,
+            fork: args.fork,
+          },
+        })
+      } finally {
+        await stop()
+      }
     } finally {
       unguard?.()
     }
