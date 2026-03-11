@@ -315,23 +315,73 @@ Complex expressions (ranges, lists, step values beyond `*/N`) are not supported 
 
 ---
 
+## Configurations
+
+Type `/configurations` in the command palette to open the settings screen — a TUI interface that lets you view and edit every option that upstream opencode exposes only through environment variables or manual JSON editing.
+
+```
+Configuration   manage OpenTerminal settings
+Showing 32 of 32 settings
+
+  setting                  category      value          description
+▸ Username                 General       (not set)      Custom username to display in conversations
+  Log Level                General       (not set)      Logging verbosity (debug, info, warn, error)
+  Default Model            Model         ollama/llama…  Default model to use (provider/model format)
+  Small Model              Model         (not set)      Small model for tasks like title generation
+  Auto Compaction          Compaction    enabled        Enable automatic compaction when context is full
+  Compaction Threshold     Compaction    0.8            Context usage fraction to trigger compaction
+  Bash Permission          Permissions   ask            Permission for shell commands (ask, allow, deny)
+  Batch Tool               Experimental  disabled       Enable the experimental batch tool
+  ...
+
+e edit   r reset   f filter   ↑↓ navigate   esc back
+```
+
+**Keybinds:**
+
+| Key       | Action                                             |
+| --------- | -------------------------------------------------- |
+| `e` / `↵` | Edit the selected setting (opens an inline dialog) |
+| `r`       | Reset the selected setting to its default value    |
+| `f`       | Cycle through category filters                     |
+| `↑` / `↓` | Navigate the list (`k`/`j` also work)              |
+| `Esc`     | Clear active filter, or return to home             |
+
+**Categories covered:**
+
+| Category     | Settings                                                                       |
+| ------------ | ------------------------------------------------------------------------------ |
+| General      | Username, Log Level, Share Mode, Auto Update, Snapshots                        |
+| Model        | Default Model, Small Model                                                     |
+| Agent        | Default Agent                                                                  |
+| Server       | Port, Hostname, mDNS, mDNS Domain                                              |
+| Permissions  | read, edit, bash, glob, grep, webfetch, task, question, todowrite, cronjob\_\* |
+| Compaction   | Auto, Prune, Threshold, Reserved Tokens, Prune Minimum, Prune Protection       |
+| Experimental | Batch Tool, Disable Paste Summary, Continue on Deny, EXA Search, MCP Timeout   |
+| Enterprise   | Enterprise URL                                                                 |
+
+Changes are written immediately to the global `opencode.json` via the SDK config API. Boolean settings use a select dialog (Enabled / Disabled); strings and numbers use an inline text prompt with validation. Pressing `r` removes the key from the config file, restoring the upstream default.
+
+---
+
 ## Differences from upstream opencode
 
-| Aspect                     | opencode                        | openterminal                                                            |
-| -------------------------- | ------------------------------- | ----------------------------------------------------------------------- |
-| AI providers               | Anthropic, OpenAI, Google, etc. | **All providers supported** — optimized for Ollama                      |
-| Model discovery            | Fetches from models.dev         | Disabled — configure models manually in `opencode.json`                 |
-| Installation               | npm / brew / curl installer     | Local scripts (`install` / `install.ps1`)                               |
-| Upgrade command            | Built-in auto-upgrade           | Disabled — use `git pull`                                               |
-| Data directory             | `~/.local/share/opencode/`      | `~/.local/share/openterminal/`                                          |
-| Config directory           | `~/.config/opencode/`           | `~/.config/openterminal/`                                               |
-| Database                   | `opencode.db`                   | `openterminal.db`                                                       |
-| Internal RPC hostname      | `opencode.internal`             | `openterminal.internal`                                                 |
-| Cronjobs                   | Not available                   | Built-in (`/cronjobs`, `openterminal cronjob`)                          |
-| Markdown tables in TUI     | May have alignment issues       | Fixed with @opentui v0.1.86 + `drawUnstyledText=true`                   |
-| Bun-specific APIs          | Used extensively                | Partially migrated to Node.js equivalents for portability               |
-| Build tooling              | Turborepo, npm scripts          | Native Bun scripts (`scripts/build-all.ts`, `scripts/typecheck-all.ts`) |
-| Cloud dependencies         | SST, Pulumi, Nix                | Removed — local-only focus                                              |
+| Aspect                 | opencode                        | openterminal                                                            |
+| ---------------------- | ------------------------------- | ----------------------------------------------------------------------- |
+| AI providers           | Anthropic, OpenAI, Google, etc. | **All providers supported** — optimized for Ollama                      |
+| Model discovery        | Fetches from models.dev         | Disabled — configure models manually in `opencode.json`                 |
+| Installation           | npm / brew / curl installer     | Local scripts (`install` / `install.ps1`)                               |
+| Upgrade command        | Built-in auto-upgrade           | Disabled — use `git pull`                                               |
+| Data directory         | `~/.local/share/opencode/`      | `~/.local/share/openterminal/`                                          |
+| Config directory       | `~/.config/opencode/`           | `~/.config/openterminal/`                                               |
+| Database               | `opencode.db`                   | `openterminal.db`                                                       |
+| Internal RPC hostname  | `opencode.internal`             | `openterminal.internal`                                                 |
+| Cronjobs               | Not available                   | Built-in (`/cronjobs`, `openterminal cronjob`)                          |
+| Settings UI            | Edit JSON / env vars manually   | `/configurations` TUI screen — edit all settings interactively          |
+| Markdown tables in TUI | May have alignment issues       | Fixed with @opentui v0.1.86 + `drawUnstyledText=true`                   |
+| Bun-specific APIs      | Used extensively                | Partially migrated to Node.js equivalents for portability               |
+| Build tooling          | Turborepo, npm scripts          | Native Bun scripts (`scripts/build-all.ts`, `scripts/typecheck-all.ts`) |
+| Cloud dependencies     | SST, Pulumi, Nix                | Removed — local-only focus                                              |
 
 Everything else — TUI, LSP, MCP, agents, skills, permissions, worktrees, session history — works identically to opencode.
 
@@ -373,7 +423,16 @@ Scripts are located in `scripts/typecheck-all.ts` and `scripts/build-all.ts`.
 
 ### Upstream sync
 
-OpenTerminal tracks upstream opencode releases. See [UPSTREAM-CHANGES.md](./UPSTREAM-CHANGES.md) for a detailed analysis of changes from v1.2.16 → v1.2.20.
+OpenTerminal periodically cherry-picks fixes and improvements from upstream [opencode](https://github.com/sst/opencode), skipping changes that target web, desktop, SDK, or cloud-only features.
+
+**Sync coverage — v1.2.16 → v1.2.24**
+
+| Version | Change                                                                  | File(s)                        | Status                                             |
+| ------- | ----------------------------------------------------------------------- | ------------------------------ | -------------------------------------------------- |
+| v1.2.24 | Copilot GPT-5.4 xhigh support via `release_date` check                  | `provider/transform.ts`        | ✅ applied                                        |
+| v1.2.23 | Disable fallback to free nano model (`getSmallModel`)                   | `provider/provider.ts`         | ⏭ skipped — fork has a different provider layer   |
+| v1.2.24 | GitLab 1 M context header                                               | `provider/provider.ts`         | ⏭ skipped — fork does not support GitLab provider |
+| v1.2.19 | Codex GPT-5.4 allowed models (Copilot Responses API)                    | `provider/sdk/copilot/`        | ⏭ skipped — Copilot SDK not present in fork       |
 
 ---
 
@@ -427,7 +486,6 @@ OpenTerminal periodically syncs improvements from upstream opencode. When mergin
 - Preserve local-only features (cronjobs, custom scripts)
 - Skip desktop/web/SDK changes (not used in OpenTerminal)
 - Test with both Ollama and external providers (Anthropic, OpenAI)
-- Update [UPSTREAM-CHANGES.md](./UPSTREAM-CHANGES.md) with analysis
 
 ---
 
