@@ -102,7 +102,7 @@ export const TuiThreadCommand = cmd({
       const root = path.resolve(process.env.OPENTERMINAL_CWD ?? process.env.PWD ?? process.cwd())
       const next = args.project
         ? path.resolve(path.isAbsolute(args.project) ? args.project : path.join(root, args.project))
-        : path.resolve(process.cwd())
+        : root
 
       const localWorker = new URL("./worker.ts", import.meta.url)
       const distWorker = new URL("./cli/cmd/tui/worker.js", import.meta.url)
