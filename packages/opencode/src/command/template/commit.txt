@@ -30,6 +30,8 @@ Input: $ARGUMENTS
 6. Report the result: show the commit hash, message, and a brief summary of what was committed (files changed, insertions, deletions).
 
 7. At the end, ask the user if they want to push the committed changes to remote.
+   - Use the OpenTerminal `question` tool (do not ask in plain text).
+   - Provide clear options such as `Yes, push now` and `No, keep local only`.
    - Do not push automatically.
    - Only push if the user explicitly confirms.
 
