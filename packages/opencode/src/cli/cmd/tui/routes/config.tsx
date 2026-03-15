@@ -13,8 +13,8 @@ type ConfigItem = {
   key: string
   label: string
   description: string
-  value: string | boolean | number | undefined
-  type: "string" | "boolean" | "number" | "model"
+  value: string | string[] | boolean | number | undefined
+  type: "string" | "string_array" | "boolean" | "number" | "model"
   category:
     | "General"
     | "Model"
@@ -66,6 +66,20 @@ const CONFIG_DEFINITIONS: Omit<ConfigItem, "value">[] = [
     label: "Enable Snapshots",
     description: "Enable session snapshots",
     type: "boolean",
+    category: "General",
+  },
+  {
+    key: "enabled_providers",
+    label: "Enabled Providers",
+    description: "Only these providers will be enabled (comma-separated)",
+    type: "string_array",
+    category: "General",
+  },
+  {
+    key: "disabled_providers",
+    label: "Disabled Providers",
+    description: "Providers to disable (comma-separated)",
+    type: "string_array",
     category: "General",
   },
 
@@ -127,6 +141,13 @@ const CONFIG_DEFINITIONS: Omit<ConfigItem, "value">[] = [
     label: "mDNS Domain",
     description: "Custom domain name for mDNS service",
     type: "string",
+    category: "Server",
+  },
+  {
+    key: "server.cors",
+    label: "CORS Allowed Origins",
+    description: "Additional domains allowed for CORS (comma-separated)",
+    type: "string_array",
     category: "Server",
   },
 
@@ -217,6 +238,62 @@ const CONFIG_DEFINITIONS: Omit<ConfigItem, "value">[] = [
     type: "string",
     category: "Permissions",
   },
+  {
+    key: "permission.cronjob_run",
+    label: "Cronjob Run Permission",
+    description: "Permission for running cronjobs (ask, allow, deny)",
+    type: "string",
+    category: "Permissions",
+  },
+  {
+    key: "permission.external_directory",
+    label: "External Directory Permission",
+    description: "Permission for paths outside project/worktree (ask, allow, deny)",
+    type: "string",
+    category: "Permissions",
+  },
+  {
+    key: "permission.todoread",
+    label: "Todo Read Permission",
+    description: "Permission for reading todos (ask, allow, deny)",
+    type: "string",
+    category: "Permissions",
+  },
+  {
+    key: "permission.websearch",
+    label: "Web Search Permission",
+    description: "Permission for web search (ask, allow, deny)",
+    type: "string",
+    category: "Permissions",
+  },
+  {
+    key: "permission.codesearch",
+    label: "Code Search Permission",
+    description: "Permission for code search (ask, allow, deny)",
+    type: "string",
+    category: "Permissions",
+  },
+  {
+    key: "permission.lsp",
+    label: "LSP Permission",
+    description: "Permission for LSP tool operations (ask, allow, deny)",
+    type: "string",
+    category: "Permissions",
+  },
+  {
+    key: "permission.skill",
+    label: "Skill Permission",
+    description: "Permission for loading skills (ask, allow, deny)",
+    type: "string",
+    category: "Permissions",
+  },
+  {
+    key: "permission.doom_loop",
+    label: "Doom Loop Permission",
+    description: "Permission guard for repeated tool loops (ask, allow, deny)",
+    type: "string",
+    category: "Permissions",
+  },
 
   // ═══════════════════════════════════════════════════════════════
   // Compaction
@@ -301,6 +378,20 @@ const CONFIG_DEFINITIONS: Omit<ConfigItem, "value">[] = [
     label: "MCP Timeout",
     description: "Timeout in milliseconds for MCP requests",
     type: "number",
+    category: "Experimental",
+  },
+  {
+    key: "experimental.windows_crlf_only",
+    label: "Windows CRLF Only",
+    description: "On Windows, save edited/written files using CRLF only",
+    type: "boolean",
+    category: "Experimental",
+  },
+  {
+    key: "experimental.primary_tools",
+    label: "Primary Tools",
+    description: "Tools available only to primary agents (comma-separated)",
+    type: "string_array",
     category: "Experimental",
   },
 
@@ -519,6 +610,7 @@ export function Config() {
 
   const formatValue = (item: ConfigItem): string => {
     if (item.value === undefined) return "(not set)"
+    if (Array.isArray(item.value)) return item.value.length > 0 ? item.value.join(", ") : "(empty)"
     if (typeof item.value === "boolean") return item.value ? "enabled" : "disabled"
     return String(item.value)
   }

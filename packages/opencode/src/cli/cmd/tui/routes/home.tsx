@@ -1,5 +1,5 @@
 import { Prompt, type PromptRef } from "@tui/component/prompt"
-import { createMemo, Match, onMount, Show, Switch } from "solid-js"
+import { createEffect, createMemo, Match, Show, Switch } from "solid-js"
 import { useTheme } from "@tui/context/theme"
 import { useKeybind } from "@tui/context/keybind"
 import { Logo } from "../component/logo"
@@ -76,8 +76,11 @@ export function Home() {
 
   let prompt: PromptRef
   const args = useArgs()
-  onMount(() => {
+  createEffect(() => {
+    if (!sync.ready) return
+    if (!prompt) return
     if (once) return
+
     if (route.initialPrompt) {
       prompt.set(route.initialPrompt)
       once = true

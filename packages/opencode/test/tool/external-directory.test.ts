@@ -124,4 +124,36 @@ describe("tool.assertExternalDirectory", () => {
 
     expect(requests.length).toBe(0)
   })
+
+  test("blocks access to protected system directories", async () => {
+    const requests: Array<Omit<PermissionNext.Request, "id" | "sessionID" | "tool">> = []
+    const ctx: Tool.Context = {
+      ...baseCtx,
+      ask: async (req) => {
+        requests.push(req)
+      },
+    }
+
+    const target =
+      process.platform === "win32"
+        ? path.join(
+            process.env.SystemRoot ?? process.env.windir ?? "C:\\Windows",
+            "System32",
+            "drivers",
+            "etc",
+            "hosts",
+          )
+        : process.platform === "darwin"
+          ? "/System/Library/CoreServices/SystemVersion.plist"
+          : "/etc/hosts"
+
+    await Instance.provide({
+      directory: "/tmp/project",
+      fn: async () => {
+        await expect(assertExternalDirectory(ctx, target)).rejects.toThrow("Access to system directories is blocked")
+      },
+    })
+
+    expect(requests.length).toBe(0)
+  })
 })

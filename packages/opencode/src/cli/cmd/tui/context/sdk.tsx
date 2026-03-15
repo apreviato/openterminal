@@ -70,17 +70,24 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
       }
 
       // Fall back to SSE
+      let reconnectDelay = 250
+      const maxReconnectDelay = 5_000
       while (true) {
         if (abort.signal.aborted) break
-        const events = await sdk.event.subscribe(
-          {},
-          {
-            signal: abort.signal,
-          },
-        )
+        const events = await sdk.event.subscribe({}, { signal: abort.signal }).catch(() => undefined)
+        if (!events) {
+          await new Promise((resolve) => setTimeout(resolve, reconnectDelay))
+          reconnectDelay = Math.min(reconnectDelay * 2, maxReconnectDelay)
+          continue
+        }
+        reconnectDelay = 250
 
-        for await (const event of events.stream) {
-          handleEvent(event)
+        try {
+          for await (const event of events.stream) {
+            handleEvent(event)
+          }
+        } catch {
+          if (abort.signal.aborted) break
         }
 
         // Flush any remaining events
@@ -88,6 +95,9 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
         if (queue.length > 0) {
           flush()
         }
+
+        await new Promise((resolve) => setTimeout(resolve, reconnectDelay))
+        reconnectDelay = Math.min(reconnectDelay * 2, maxReconnectDelay)
       }
     })
 

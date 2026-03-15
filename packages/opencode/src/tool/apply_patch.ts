@@ -13,6 +13,8 @@ import { LSP } from "../lsp"
 import { Filesystem } from "../util/filesystem"
 import DESCRIPTION from "./apply_patch.txt"
 import { File } from "../file"
+import { Config } from "@/config/config"
+import { enforceWindowsCRLF } from "@/util/line-ending"
 
 const PatchParams = z.object({
   patchText: z.string().describe("The full patch text that describes all changes to be made"),
@@ -43,6 +45,9 @@ export const ApplyPatchTool = Tool.define("apply_patch", {
       throw new Error("apply_patch verification failed: no hunks found")
     }
 
+    const windowsCRLFOnly =
+      process.platform === "win32" && (await Config.get()).experimental?.windows_crlf_only === true
+
     // Validate file paths and check permissions
     const fileChanges: Array<{
       filePath: string
@@ -64,8 +69,12 @@ export const ApplyPatchTool = Tool.define("apply_patch", {
       switch (hunk.type) {
         case "add": {
           const oldContent = ""
-          const newContent =
+          const withTrailingNewline =
             hunk.contents.length === 0 || hunk.contents.endsWith("\n") ? hunk.contents : `${hunk.contents}\n`
+          const newContent = enforceWindowsCRLF({
+            content: withTrailingNewline,
+            enabled: windowsCRLFOnly,
+          })
           const diff = trimDiff(createTwoFilesPatch(filePath, filePath, oldContent, newContent))
 
           let additions = 0
@@ -106,6 +115,11 @@ export const ApplyPatchTool = Tool.define("apply_patch", {
           } catch (error) {
             throw new Error(`apply_patch verification failed: ${error}`)
           }
+
+          newContent = enforceWindowsCRLF({
+            content: newContent,
+            enabled: windowsCRLFOnly,
+          })
 
           const diff = trimDiff(createTwoFilesPatch(filePath, filePath, oldContent, newContent))
 

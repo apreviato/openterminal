@@ -264,13 +264,24 @@ export namespace Pty {
       ws.close()
       return
     }
+    if (ws.readyState !== 1) {
+      return
+    }
     log.info("client connected to session", { id })
 
     // Use ws.data as the unique key for this connection lifecycle.
     // If ws.data is undefined, fallback to ws object.
     const connectionKey = ws.data && typeof ws.data === "object" ? ws.data : ws
 
-    // Optionally cleanup if the key somehow exists
+    // If the same key is already in-use, close the old socket before replacing.
+    const existing = session.subscribers.get(connectionKey)
+    if (existing && existing !== ws) {
+      try {
+        existing.close()
+      } catch {
+        // ignore
+      }
+    }
     session.subscribers.delete(connectionKey)
     session.subscribers.set(connectionKey, ws)
 
@@ -313,6 +324,7 @@ export namespace Pty {
     }
     return {
       onMessage: (message: string | ArrayBuffer) => {
+        if (session.info.status !== "running") return
         session.process.write(String(message))
       },
       onClose: () => {

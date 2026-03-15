@@ -1191,6 +1191,10 @@ export namespace Config {
             .positive()
             .optional()
             .describe("Timeout in milliseconds for model context protocol (MCP) requests"),
+          windows_crlf_only: z
+            .boolean()
+            .optional()
+            .describe("On Windows, normalize saved text files to CRLF line endings to prevent mixed formats"),
         })
         .optional(),
     })

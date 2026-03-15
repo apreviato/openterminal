@@ -12,6 +12,8 @@ import { Filesystem } from "../util/filesystem"
 import { Instance } from "../project/instance"
 import { trimDiff } from "./edit"
 import { assertExternalDirectory } from "./external-directory"
+import { Config } from "@/config/config"
+import { enforceWindowsCRLF } from "@/util/line-ending"
 
 const MAX_DIAGNOSTICS_PER_FILE = 20
 const MAX_PROJECT_DIAGNOSTICS_FILES = 5
@@ -25,12 +27,18 @@ export const WriteTool = Tool.define("write", {
   async execute(params, ctx) {
     const filepath = path.isAbsolute(params.filePath) ? params.filePath : path.join(Instance.directory, params.filePath)
     await assertExternalDirectory(ctx, filepath)
+    const windowsCRLFOnly =
+      process.platform === "win32" && (await Config.get()).experimental?.windows_crlf_only === true
+    const contentToWrite = enforceWindowsCRLF({
+      content: params.content,
+      enabled: windowsCRLFOnly,
+    })
 
     const exists = await Filesystem.exists(filepath)
     const contentOld = exists ? await Filesystem.readText(filepath) : ""
     if (exists) await FileTime.assert(ctx.sessionID, filepath)
 
-    const diff = trimDiff(createTwoFilesPatch(filepath, filepath, contentOld, params.content))
+    const diff = trimDiff(createTwoFilesPatch(filepath, filepath, contentOld, contentToWrite))
     await ctx.ask({
       permission: "edit",
       patterns: [path.relative(Instance.worktree, filepath)],
@@ -41,7 +49,7 @@ export const WriteTool = Tool.define("write", {
       },
     })
 
-    await Filesystem.write(filepath, params.content)
+    await Filesystem.write(filepath, contentToWrite)
     await Bus.publish(File.Event.Edited, {
       file: filepath,
     })

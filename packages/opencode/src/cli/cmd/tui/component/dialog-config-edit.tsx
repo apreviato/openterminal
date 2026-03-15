@@ -7,14 +7,14 @@ type ConfigItem = {
   key: string
   label: string
   description: string
-  value: string | boolean | number | undefined
-  type: "string" | "boolean" | "number" | "model"
+  value: string | string[] | boolean | number | undefined
+  type: "string" | "string_array" | "boolean" | "number" | "model"
   category: string
 }
 
 interface DialogConfigEditProps {
   item: ConfigItem
-  onDone: (newValue: string | boolean | number | undefined) => void
+  onDone: (newValue: string | string[] | boolean | number | undefined) => void
 }
 
 export function DialogConfigEdit(props: DialogConfigEditProps) {
@@ -43,7 +43,8 @@ export function DialogConfigEdit(props: DialogConfigEditProps) {
     <DialogPrompt
       title={`Edit ${props.item.label}`}
       placeholder={props.item.description}
-      value={String(props.item.value || "")}
+      multiline={props.item.type === "string_array"}
+      value={Array.isArray(props.item.value) ? props.item.value.join("\n") : String(props.item.value || "")}
       description={() => <text>{props.item.description}</text>}
       onConfirm={(value) => {
         const trimmed = value.trim()
@@ -60,6 +61,15 @@ export function DialogConfigEdit(props: DialogConfigEditProps) {
             return
           }
           props.onDone(num)
+          return
+        }
+
+        if (props.item.type === "string_array") {
+          const values = trimmed
+            .split(/[\n,]/)
+            .map((x) => x.trim())
+            .filter(Boolean)
+          props.onDone(values)
           return
         }
 

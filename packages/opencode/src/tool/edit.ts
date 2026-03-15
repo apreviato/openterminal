@@ -17,6 +17,8 @@ import { Filesystem } from "../util/filesystem"
 import { Instance } from "../project/instance"
 import { Snapshot } from "@/snapshot"
 import { assertExternalDirectory } from "./external-directory"
+import { Config } from "@/config/config"
+import { enforceWindowsCRLF } from "@/util/line-ending"
 
 const MAX_DIAGNOSTICS_PER_FILE = 20
 
@@ -52,6 +54,8 @@ export const EditTool = Tool.define("edit", {
 
     const filePath = path.isAbsolute(params.filePath) ? params.filePath : path.join(Instance.directory, params.filePath)
     await assertExternalDirectory(ctx, filePath)
+    const windowsCRLFOnly =
+      process.platform === "win32" && (await Config.get()).experimental?.windows_crlf_only === true
 
     let diff = ""
     let contentOld = ""
@@ -59,7 +63,10 @@ export const EditTool = Tool.define("edit", {
     await FileTime.withLock(filePath, async () => {
       if (params.oldString === "") {
         const existed = await Filesystem.exists(filePath)
-        contentNew = params.newString
+        contentNew = enforceWindowsCRLF({
+          content: params.newString,
+          enabled: windowsCRLFOnly,
+        })
         diff = trimDiff(createTwoFilesPatch(filePath, filePath, contentOld, contentNew))
         await ctx.ask({
           permission: "edit",
@@ -70,7 +77,7 @@ export const EditTool = Tool.define("edit", {
             diff,
           },
         })
-        await Filesystem.write(filePath, params.newString)
+        await Filesystem.write(filePath, contentNew)
         await Bus.publish(File.Event.Edited, {
           file: filePath,
         })
@@ -93,6 +100,10 @@ export const EditTool = Tool.define("edit", {
       const next = convertToLineEnding(normalizeLineEndings(params.newString), ending)
 
       contentNew = replace(contentOld, old, next, params.replaceAll)
+      contentNew = enforceWindowsCRLF({
+        content: contentNew,
+        enabled: windowsCRLFOnly,
+      })
 
       diff = trimDiff(
         createTwoFilesPatch(filePath, filePath, normalizeLineEndings(contentOld), normalizeLineEndings(contentNew)),

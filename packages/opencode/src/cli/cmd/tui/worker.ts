@@ -64,27 +64,42 @@ const startEventStream = (directory: string) => {
   })
 
   ;(async () => {
+    let reconnectDelay = 250
+    const maxReconnectDelay = 5_000
+
     while (!signal.aborted) {
-      const events = await Promise.resolve(
-        sdk.event.subscribe(
-          {},
-          {
-            signal,
-          },
-        ),
-      ).catch(() => undefined)
+      const events = await Promise.resolve(sdk.event.subscribe({}, { signal })).catch((error) => {
+        Log.Default.debug("event subscribe failed", {
+          error: error instanceof Error ? error.message : error,
+          delay: reconnectDelay,
+        })
+        return undefined
+      })
 
       if (!events) {
-        await sleep(250)
+        await sleep(reconnectDelay)
+        reconnectDelay = Math.min(reconnectDelay * 2, maxReconnectDelay)
         continue
       }
 
-      for await (const event of events.stream) {
-        Rpc.emit("event", event as Event)
+      reconnectDelay = 250
+
+      try {
+        for await (const event of events.stream) {
+          Rpc.emit("event", event as Event)
+        }
+      } catch (error) {
+        if (!signal.aborted) {
+          Log.Default.debug("event stream interrupted", {
+            error: error instanceof Error ? error.message : error,
+            delay: reconnectDelay,
+          })
+        }
       }
 
       if (!signal.aborted) {
-        await sleep(250)
+        await sleep(reconnectDelay)
+        reconnectDelay = Math.min(reconnectDelay * 2, maxReconnectDelay)
       }
     }
   })().catch((error) => {

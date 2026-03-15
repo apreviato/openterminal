@@ -4,6 +4,7 @@ import { Session } from "../../src/session"
 import { Bus } from "../../src/bus"
 import { Log } from "../../src/util/log"
 import { Instance } from "../../src/project/instance"
+import { Identifier } from "../../src/id/id"
 
 const projectRoot = path.join(__dirname, "../..")
 Log.init({ print: false })
@@ -63,6 +64,51 @@ describe("session.started event", () => {
         expect(events).toContain("started")
         expect(events).toContain("updated")
         expect(events.indexOf("started")).toBeLessThan(events.indexOf("updated"))
+
+        await Session.remove(session.id)
+      },
+    })
+  })
+})
+
+describe("session.messagesPage", () => {
+  test("paginates messages with cursor", async () => {
+    await Instance.provide({
+      directory: projectRoot,
+      fn: async () => {
+        const session = await Session.create({})
+        const created = [1000, 2000, 3000]
+
+        for (const time of created) {
+          await Session.updateMessage({
+            id: Identifier.ascending("message"),
+            role: "user",
+            sessionID: session.id,
+            agent: "default",
+            model: {
+              providerID: "openai",
+              modelID: "gpt-4",
+            },
+            time: { created: time },
+          })
+        }
+
+        const first = await Session.messagesPage({
+          sessionID: session.id,
+          limit: 2,
+        })
+
+        expect(first.items.map((item) => item.info.time.created)).toEqual([2000, 3000])
+        expect(first.nextCursor).toBe(2000)
+
+        const second = await Session.messagesPage({
+          sessionID: session.id,
+          limit: 2,
+          cursor: first.nextCursor,
+        })
+
+        expect(second.items.map((item) => item.info.time.created)).toEqual([1000])
+        expect(second.nextCursor).toBeUndefined()
 
         await Session.remove(session.id)
       },

@@ -1,7 +1,7 @@
 import { TextareaRenderable, TextAttributes } from "@opentui/core"
 import { useTheme } from "../context/theme"
 import { useDialog, type DialogContext } from "./dialog"
-import { onMount, type JSX } from "solid-js"
+import { onMount, Show, type JSX } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 
 export type DialogPromptProps = {
@@ -9,6 +9,7 @@ export type DialogPromptProps = {
   description?: () => JSX.Element
   placeholder?: string
   value?: string
+  multiline?: boolean
   onConfirm?: (value: string) => void
   onCancel?: () => void
 }
@@ -19,7 +20,10 @@ export function DialogPrompt(props: DialogPromptProps) {
   let textarea: TextareaRenderable
 
   useKeyboard((evt) => {
-    if (evt.name === "return") {
+    if (!props.multiline && evt.name === "return") {
+      props.onConfirm?.(textarea.plainText)
+    }
+    if (props.multiline && evt.ctrl && evt.name === "return") {
       props.onConfirm?.(textarea.plainText)
     }
   })
@@ -49,8 +53,12 @@ export function DialogPrompt(props: DialogPromptProps) {
           onSubmit={() => {
             props.onConfirm?.(textarea.plainText)
           }}
-          height={3}
-          keyBindings={[{ name: "return", action: "submit" }]}
+          height={props.multiline ? 8 : 3}
+          keyBindings={
+            props.multiline
+              ? [{ name: "return", ctrl: true, action: "submit" }]
+              : [{ name: "return", action: "submit" }]
+          }
           ref={(val: TextareaRenderable) => (textarea = val)}
           initialValue={props.value}
           placeholder={props.placeholder ?? "Enter text"}
@@ -61,7 +69,16 @@ export function DialogPrompt(props: DialogPromptProps) {
       </box>
       <box paddingBottom={1} gap={1} flexDirection="row">
         <text fg={theme.text}>
-          enter <span style={{ fg: theme.textMuted }}>submit</span>
+          <Show
+            when={props.multiline}
+            fallback={
+              <>
+                enter <span style={{ fg: theme.textMuted }}>submit</span>
+              </>
+            }
+          >
+            ctrl+enter <span style={{ fg: theme.textMuted }}>submit</span>
+          </Show>
         </text>
       </box>
     </box>

@@ -518,15 +518,78 @@ export namespace Session {
     z.object({
       sessionID: Identifier.schema("session"),
       limit: z.number().optional(),
+      cursor: z.number().optional(),
     }),
     async (input) => {
-      const result = [] as MessageV2.WithParts[]
-      for await (const msg of MessageV2.stream(input.sessionID)) {
-        if (input.limit && result.length >= input.limit) break
-        result.push(msg)
+      const page = await messagesPage(input)
+      return page.items
+    },
+  )
+
+  export const messagesPage = fn(
+    z.object({
+      sessionID: Identifier.schema("session"),
+      limit: z.number().optional(),
+      cursor: z.number().optional(),
+    }),
+    async (input) => {
+      const limit = input.limit ?? 100
+      const conditions = [eq(MessageTable.session_id, input.sessionID)]
+      if (input.cursor) {
+        conditions.push(lt(MessageTable.time_created, input.cursor))
       }
-      result.reverse()
-      return result
+
+      const rows = Database.use((db) =>
+        db
+          .select()
+          .from(MessageTable)
+          .where(and(...conditions))
+          .orderBy(desc(MessageTable.time_created), desc(MessageTable.id))
+          .limit(limit + 1)
+          .all(),
+      )
+
+      const hasMore = rows.length > limit
+      const selected = hasMore ? rows.slice(0, limit) : rows
+      const nextCursor = hasMore && selected.length > 0 ? selected[selected.length - 1].time_created : undefined
+
+      const ids = selected.map((row) => row.id)
+      const partsByMessage = new Map<string, MessageV2.Part[]>()
+      if (ids.length > 0) {
+        const partRows = Database.use((db) =>
+          db
+            .select()
+            .from(PartTable)
+            .where(inArray(PartTable.message_id, ids))
+            .orderBy(PartTable.message_id, PartTable.id)
+            .all(),
+        )
+        for (const row of partRows) {
+          const part = {
+            ...row.data,
+            id: row.id,
+            sessionID: row.session_id,
+            messageID: row.message_id,
+          } as MessageV2.Part
+          const list = partsByMessage.get(row.message_id)
+          if (list) list.push(part)
+          else partsByMessage.set(row.message_id, [part])
+        }
+      }
+
+      const items: MessageV2.WithParts[] = []
+      for (const row of selected) {
+        const info = { ...row.data, id: row.id, sessionID: row.session_id } as MessageV2.Info
+        items.push({
+          info,
+          parts: partsByMessage.get(row.id) ?? [],
+        })
+      }
+      items.reverse()
+      return {
+        items,
+        nextCursor,
+      }
     },
   )
 
@@ -881,6 +944,33 @@ export namespace Session {
         command: Command.Default.INIT,
         arguments: "",
       })
+    },
+  )
+
+  export const commit = fn(
+    z.object({
+      sessionID: Identifier.schema("session"),
+      modelID: z.string(),
+      providerID: z.string(),
+      messageID: Identifier.schema("message"),
+      message: z.string().optional(),
+    }),
+    async (input) => {
+      const result = await SessionPrompt.command({
+        sessionID: input.sessionID,
+        messageID: input.messageID,
+        model: input.providerID + "/" + input.modelID,
+        command: Command.Default.COMMIT,
+        arguments: input.message ?? "",
+      })
+      // Refresh the session diff summary after the commit so the changes
+      // panel reflects the updated state (pending changes cleared).
+      const { SessionSummary } = await import("./summary")
+      await SessionSummary.summarize({
+        sessionID: input.sessionID,
+        messageID: result.info.id,
+      })
+      return result
     },
   )
 }

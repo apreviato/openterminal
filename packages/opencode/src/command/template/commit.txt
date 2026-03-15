@@ -1,0 +1,37 @@
+Commit all pending changes in the current git repository at ${path}.
+
+---
+
+Input: $ARGUMENTS
+
+---
+
+## Steps
+
+1. Run `git -C ${path} status --short` to check for pending changes.
+   - If there are no changes (empty output), report "Nothing to commit — working tree is clean." and stop.
+
+2. Run `git -C ${path} diff --stat HEAD` (or `git -C ${path} diff --cached --stat` if changes are already staged) to understand what changed.
+
+3. Read the changed files as needed to understand the nature of the changes.
+
+4. Generate a concise, conventional commit message that accurately describes the changes:
+   - Use the format: `<type>(<scope>): <short description>`
+   - Types: feat, fix, refactor, docs, style, test, chore, perf
+   - Keep the subject line under 72 characters
+   - If $ARGUMENTS is provided, use it as the commit message (or as additional context to refine the message)
+
+5. Stage all changes and commit:
+   ```
+   git -C ${path} add -A
+   git -C ${path} commit -m "<generated message>"
+   ```
+
+6. Report the result: show the commit hash, message, and a brief summary of what was committed (files changed, insertions, deletions).
+
+## Important
+
+- Do NOT push to remote — only commit locally.
+- Do NOT amend existing commits.
+- If the commit fails (e.g. pre-commit hook rejection), report the error clearly and do not retry automatically.
+- After a successful commit, the session's change summary will be updated automatically.

@@ -15,10 +15,57 @@ import { Config } from "@/config/config"
 import { SessionCompaction } from "./compaction"
 import { PermissionNext } from "@/permission/next"
 import { Question } from "@/question"
+import { Flag } from "@/flag/flag"
 
 export namespace SessionProcessor {
   const DOOM_LOOP_THRESHOLD = 3
+  const STREAM_CHUNK_TIMEOUT_MS = Flag.OPENCODE_EXPERIMENTAL_STREAM_CHUNK_TIMEOUT_MS ?? 120_000
   const log = Log.create({ service: "session.processor" })
+
+  class StreamChunkTimeoutError extends Error {
+    constructor(timeoutMs: number) {
+      super(`LLM stream timed out waiting for the next chunk after ${timeoutMs}ms`)
+      this.name = "StreamChunkTimeoutError"
+    }
+  }
+
+  function nextChunkWithTimeout<T>(
+    iterator: AsyncIterator<T>,
+    timeoutMs: number,
+    signal: AbortSignal,
+  ): Promise<IteratorResult<T>> {
+    if (timeoutMs <= 0) return iterator.next()
+
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        cleanup()
+        reject(new StreamChunkTimeoutError(timeoutMs))
+      }, timeoutMs)
+
+      const onAbort = () => {
+        cleanup()
+        reject(new DOMException("Aborted", "AbortError"))
+      }
+
+      const cleanup = () => {
+        clearTimeout(timer)
+        signal.removeEventListener("abort", onAbort)
+      }
+
+      signal.addEventListener("abort", onAbort, { once: true })
+
+      iterator
+        .next()
+        .then((result) => {
+          cleanup()
+          resolve(result)
+        })
+        .catch((error) => {
+          cleanup()
+          reject(error)
+        })
+    })
+  }
 
   export type Info = Awaited<ReturnType<typeof create>>
   export type Result = Awaited<ReturnType<Info["process"]>>
@@ -63,7 +110,11 @@ export namespace SessionProcessor {
             let reasoningMap: Record<string, MessageV2.ReasoningPart> = {}
             const stream = await LLM.stream(streamInput)
 
-            for await (const value of stream.fullStream) {
+            const iterator = stream.fullStream[Symbol.asyncIterator]()
+            while (true) {
+              const next = await nextChunkWithTimeout(iterator, STREAM_CHUNK_TIMEOUT_MS, input.abort)
+              if (next.done) break
+              const value = next.value
               input.abort.throwIfAborted()
               switch (value.type) {
                 case "start":
@@ -381,7 +432,19 @@ export namespace SessionProcessor {
               error: e,
               stack: JSON.stringify(e.stack),
             })
-            const error = MessageV2.fromError(e, { providerID: input.model.providerID })
+            const error =
+              e instanceof StreamChunkTimeoutError
+                ? new MessageV2.APIError(
+                    {
+                      message: e.message,
+                      isRetryable: true,
+                      metadata: {
+                        code: "stream_chunk_timeout",
+                      },
+                    },
+                    { cause: e },
+                  ).toObject()
+                : MessageV2.fromError(e, { providerID: input.model.providerID })
             if (MessageV2.ContextOverflowError.isInstance(error)) {
               // TODO: Handle context overflow error
             }

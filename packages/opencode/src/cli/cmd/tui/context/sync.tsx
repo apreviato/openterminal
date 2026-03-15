@@ -432,6 +432,38 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
     })
 
     const fullSyncedSessions = new Set<string>()
+
+    async function fetchAllSessionMessages(sessionID: string, pageSize = 100) {
+      const items: NonNullable<(typeof store.message)[string]> = []
+      const partsByMessage: Record<string, NonNullable<(typeof store.part)[string]>> = {}
+      let cursor: number | undefined
+
+      while (true) {
+        const page = await sdk.client.session.messages({
+          sessionID,
+          limit: pageSize,
+          ...(cursor !== undefined ? ({ cursor } as { cursor: number }) : {}),
+        } as any)
+
+        const messages = page.data ?? []
+        for (const message of messages) {
+          items.push(message.info)
+          partsByMessage[message.info.id] = message.parts
+        }
+
+        const nextHeader = page.response.headers.get("x-next-cursor")
+        if (!nextHeader) break
+        const next = Number(nextHeader)
+        if (!Number.isFinite(next)) break
+        cursor = next
+      }
+
+      return {
+        items,
+        partsByMessage,
+      }
+    }
+
     const result = {
       data: store,
       set: setStore,
@@ -461,7 +493,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           if (fullSyncedSessions.has(sessionID)) return
           const [session, messages, todo, diff] = await Promise.all([
             sdk.client.session.get({ sessionID }, { throwOnError: true }),
-            sdk.client.session.messages({ sessionID, limit: 100 }),
+            fetchAllSessionMessages(sessionID, 100),
             sdk.client.session.todo({ sessionID }),
             sdk.client.session.diff({ sessionID }),
           ])
@@ -471,9 +503,9 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
               if (match.found) draft.session[match.index] = session.data!
               if (!match.found) draft.session.splice(match.index, 0, session.data!)
               draft.todo[sessionID] = todo.data ?? []
-              draft.message[sessionID] = messages.data!.map((x) => x.info)
-              for (const message of messages.data!) {
-                draft.part[message.info.id] = message.parts
+              draft.message[sessionID] = messages.items
+              for (const [messageID, parts] of Object.entries(messages.partsByMessage)) {
+                draft.part[messageID] = parts
               }
               draft.session_diff[sessionID] = diff.data ?? []
             }),

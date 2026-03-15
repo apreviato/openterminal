@@ -323,6 +323,39 @@ export const SessionRoutes = lazy(() =>
       },
     )
     .post(
+      "/:sessionID/commit",
+      describeRoute({
+        summary: "Commit pending changes",
+        description:
+          "Stage all pending changes in the current repository and create a git commit with an auto-generated (or provided) message. The session's change summary is refreshed after the commit.",
+        operationId: "session.commit",
+        responses: {
+          200: {
+            description: "200",
+            content: {
+              "application/json": {
+                schema: resolver(z.boolean()),
+              },
+            },
+          },
+          ...errors(400, 404),
+        },
+      }),
+      validator(
+        "param",
+        z.object({
+          sessionID: z.string().meta({ description: "Session ID" }),
+        }),
+      ),
+      validator("json", Session.commit.schema.omit({ sessionID: true })),
+      async (c) => {
+        const sessionID = c.req.valid("param").sessionID
+        const body = c.req.valid("json")
+        await Session.commit({ ...body, sessionID })
+        return c.json(true)
+      },
+    )
+    .post(
       "/:sessionID/fork",
       describeRoute({
         summary: "Fork session",
@@ -570,15 +603,23 @@ export const SessionRoutes = lazy(() =>
         "query",
         z.object({
           limit: z.coerce.number().optional(),
+          cursor: z.coerce
+            .number()
+            .optional()
+            .meta({ description: "Return messages created before this timestamp (milliseconds since epoch)" }),
         }),
       ),
       async (c) => {
         const query = c.req.valid("query")
-        const messages = await Session.messages({
+        const page = await Session.messagesPage({
           sessionID: c.req.valid("param").sessionID,
           limit: query.limit,
+          cursor: query.cursor,
         })
-        return c.json(messages)
+        if (page.nextCursor) {
+          c.header("x-next-cursor", String(page.nextCursor))
+        }
+        return c.json(page.items)
       },
     )
     .get(
