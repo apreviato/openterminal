@@ -83,7 +83,7 @@ export namespace Command {
       },
       [Default.COMMIT]: {
         name: Default.COMMIT,
-        description: "commit all pending changes with an auto-generated message",
+        description: "commit all pending changes, then ask whether to push",
         source: "command",
         get template() {
           return PROMPT_COMMIT.replaceAll("${path}", Instance.worktree)

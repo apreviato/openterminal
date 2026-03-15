@@ -29,9 +29,13 @@ Input: $ARGUMENTS
 
 6. Report the result: show the commit hash, message, and a brief summary of what was committed (files changed, insertions, deletions).
 
+7. At the end, ask the user if they want to push the committed changes to remote.
+   - Do not push automatically.
+   - Only push if the user explicitly confirms.
+
 ## Important
 
-- Do NOT push to remote — only commit locally.
+- Do NOT push to remote unless the user explicitly asks for it after the commit.
 - Do NOT amend existing commits.
 - If the commit fails (e.g. pre-commit hook rejection), report the error clearly and do not retry automatically.
 - After a successful commit, the session's change summary will be updated automatically.
